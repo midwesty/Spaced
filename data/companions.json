@@ -1,0 +1,96 @@
+[
+  {
+    "id": "comp_vesk",
+    "name": "Vexa Sorn",
+    "speciesId": "synthel",
+    "classId": "salvager",
+    "role": "ally",
+    "factionId": "free",
+    "level": 1,
+    "x": 4,
+    "y": 8,
+    "hpMax": 13,
+    "armor": 12,
+    "movement": 6,
+    "abilities": [
+      "repair_burst",
+      "shock_dart"
+    ],
+    "inventory": [
+      {
+        "itemId": "repair_kit",
+        "qty": 1
+      },
+      {
+        "itemId": "ration_pack",
+        "qty": 1
+      }
+    ],
+    "equipped": {
+      "mainhand": "arc_tool",
+      "armor": "salvage_rig",
+      "utility": "repair_kit",
+      "offhand": null,
+      "implant": null,
+      "pack": null
+    },
+    "bio": "Dry-witted salvage prodigy who can repair a reactor, crack a lock, or insult a warlord with equal confidence.",
+    "dialogueId": "vexa_intro",
+    "affinity": 8,
+    "voice": "assets/audio/voice/vexa_intro_001.ogg",
+    "portrait": "assets/images/portraits/vexa.png",
+    "startMapId": "port_sable",
+    "appearance": {
+      "skin": "#8a9bb1",
+      "hair": "#f5f5f5",
+      "accent": "#79d4ff"
+    }
+  },
+  {
+    "id": "comp_talon",
+    "name": "Talon Rhyse",
+    "speciesId": "karrox",
+    "classId": "raider",
+    "role": "ally",
+    "factionId": "free",
+    "level": 1,
+    "x": 12,
+    "y": 4,
+    "hpMax": 18,
+    "armor": 13,
+    "movement": 5,
+    "abilities": [
+      "jet_lunge",
+      "adrenal_surge"
+    ],
+    "inventory": [
+      {
+        "itemId": "stunstick",
+        "qty": 1
+      },
+      {
+        "itemId": "ration_pack",
+        "qty": 1
+      }
+    ],
+    "equipped": {
+      "mainhand": "stunstick",
+      "armor": "patch_armor",
+      "utility": null,
+      "offhand": null,
+      "implant": null,
+      "pack": null
+    },
+    "bio": "Former convoy bruiser with a heroic streak he denies whenever possible.",
+    "dialogueId": "talon_intro",
+    "affinity": 4,
+    "voice": "assets/audio/voice/talon_intro_001.ogg",
+    "portrait": "assets/images/portraits/talon.png",
+    "startMapId": "ember_hollow",
+    "appearance": {
+      "skin": "#946a55",
+      "hair": "#311811",
+      "accent": "#ff8e62"
+    }
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "main_awake",
+    "name": "The Wake Claim",
+    "category": "Main",
+    "description": "Survive the station slaughter, secure the hidden smuggler ship, gather a crew, and get out before Port Sable decides you belong in a body chute.",
+    "stages": [
+      {
+        "text": "Escape the drydock gunfight and reach the hidden berth."
+      },
+      {
+        "text": "Claim the Scavenger's Wake and get it spaceworthy."
+      },
+      {
+        "text": "Choose your first jump: Ember Hollow or Glassreef."
+      },
+      {
+        "text": "Learn why someone on Port Sable wanted the ship buried."
+      }
+    ]
+  },
+  {
+    "id": "side_debt",
+    "name": "Ashes of a Bad Loan",
+    "category": "Side",
+    "description": "A local fixer wants a ledger recovered before station enforcers burn it.",
+    "stages": [
+      {
+        "text": "Find the debtor locker in Port Sable's lower vents."
+      },
+      {
+        "text": "Choose who gets the ledger."
+      }
+    ]
+  },
+  {
+    "id": "comp_vexa",
+    "name": "Patchwork Loyalties",
+    "category": "Companion",
+    "description": "Vexa's old salvage crew sold her out for civic immunity.",
+    "stages": [
+      {
+        "text": "Hear Vexa out once the ship is yours."
+      },
+      {
+        "text": "Track the crew's fence through Ember Hollow."
+      }
+    ]
+  }
+]

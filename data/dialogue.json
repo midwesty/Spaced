@@ -1,0 +1,286 @@
+{
+  "nodes": {
+    "intro_station_master": {
+      "speaker": "Unknown Voice",
+      "text": "You found the wrong berth on the worst possible day. Good news: the ship still flies. Bad news: half the station wants you dead, and the other half wants the bounty.",
+      "choices": [
+        {
+          "label": "Who are you?",
+          "target": "intro_station_master_who"
+        },
+        {
+          "label": "Then we take the ship and leave.",
+          "check": {
+            "stat": "presence",
+            "dc": 11
+          },
+          "target": "intro_station_master_take",
+          "failTarget": "intro_station_master_fail"
+        },
+        {
+          "label": "I want details before I trust a whisper in the dark.",
+          "check": {
+            "stat": "wit",
+            "dc": 12
+          },
+          "target": "intro_station_master_detail",
+          "failTarget": "intro_station_master_fail"
+        }
+      ]
+    },
+    "intro_station_master_who": {
+      "speaker": "Unknown Voice",
+      "text": "Call me the berth ghost. I kept this crate hidden until someone meaner than me started looking for it. That happened ten minutes ago.",
+      "choices": [
+        {
+          "label": "Fine. We move now.",
+          "target": "intro_station_master_take",
+          "effects": {
+            "shipOwned": true,
+            "setFlag": "acquiredWake",
+            "questAdvance": {
+              "id": "main_awake",
+              "stage": 1
+            },
+            "log": "The hidden berth unlocks with a shriek of old seals."
+          }
+        },
+        {
+          "label": "This feels like a trap.",
+          "target": "intro_station_master_fail"
+        }
+      ]
+    },
+    "intro_station_master_take": {
+      "speaker": "Unknown Voice",
+      "text": "Finally. Grab the salvage tech by the coolant stack if you want the engines lit before security drills through the hull. And if she mouths off, that means she likes you.",
+      "choices": [
+        {
+          "label": "Understood. Move.",
+          "target": null,
+          "effects": {
+            "shipOwned": true,
+            "joinParty": false
+          }
+        },
+        {
+          "label": "You had me at 'engines lit.'",
+          "target": null,
+          "effects": {
+            "shipOwned": true
+          }
+        }
+      ]
+    },
+    "intro_station_master_detail": {
+      "speaker": "Unknown Voice",
+      "text": "The ship was used to smuggle pre-collapse relics, living cargo, and one thing nobody names out loud. Whoever controlled it disappeared. Whoever finds it next gets hunted.",
+      "choices": [
+        {
+          "label": "Then let's earn the hunt.",
+          "target": "intro_station_master_take",
+          "effects": {
+            "affinity": 2
+          }
+        },
+        {
+          "label": "I hate this already.",
+          "target": "intro_station_master_take"
+        }
+      ]
+    },
+    "intro_station_master_fail": {
+      "speaker": "Unknown Voice",
+      "text": "You can doubt me on your own time. Right now, boots are coming down the catwalk and those people do not negotiate.",
+      "choices": [
+        {
+          "label": "Move.",
+          "target": "intro_station_master_take"
+        }
+      ]
+    },
+    "vexa_intro": {
+      "speaker": "Vexa Sorn",
+      "text": "Let me guess. You touched the cursed ship, made eye contact with death, and now you're hoping I'm the kind of idiot who can fix both. Annoying for you: I actually can.",
+      "choices": [
+        {
+          "label": "Join me and keep us alive.",
+          "check": {
+            "stat": "presence",
+            "dc": 10
+          },
+          "target": "vexa_join",
+          "failTarget": "vexa_notyet"
+        },
+        {
+          "label": "What broke on the ship?",
+          "target": "vexa_ship"
+        },
+        {
+          "label": "You always this charming?",
+          "target": "vexa_flirt",
+          "effects": {
+            "affinity": 2,
+            "romance": 1
+          }
+        }
+      ]
+    },
+    "vexa_join": {
+      "speaker": "Vexa Sorn",
+      "text": "Fine. I get a bunk, first pick of interesting scrap, and veto power if you try to fly this coffin without enough coolant again.",
+      "choices": [
+        {
+          "label": "Deal.",
+          "target": null,
+          "effects": {
+            "joinParty": true,
+            "questAdvance": {
+              "id": "comp_vexa",
+              "stage": 0
+            },
+            "affinity": 4
+          }
+        },
+        {
+          "label": "You drive a hard bargain.",
+          "target": null,
+          "effects": {
+            "joinParty": true,
+            "affinity": 3
+          }
+        }
+      ]
+    },
+    "vexa_notyet": {
+      "speaker": "Vexa Sorn",
+      "text": "Cute speech. Try again after you survive one firefight and stop smelling like coolant panic.",
+      "choices": [
+        {
+          "label": "Fair enough.",
+          "target": null
+        }
+      ]
+    },
+    "vexa_ship": {
+      "speaker": "Vexa Sorn",
+      "text": "Core bleed, fuel slosh, vent ghosts, and a nav ghost that either needs prayer or a soldering gun. Mostly fixable. Probably.",
+      "choices": [
+        {
+          "label": "You said 'probably' too casually.",
+          "target": "vexa_join"
+        },
+        {
+          "label": "I like your confidence.",
+          "target": "vexa_flirt",
+          "effects": {
+            "affinity": 1
+          }
+        }
+      ]
+    },
+    "vexa_flirt": {
+      "speaker": "Vexa Sorn",
+      "text": "Don't flirt with me while the station is trying to kill us. Or do. I respect terrible timing.",
+      "choices": [
+        {
+          "label": "Then stay close.",
+          "target": "vexa_join",
+          "effects": {
+            "romance": 1
+          }
+        },
+        {
+          "label": "I'll save the line for later.",
+          "target": "vexa_join",
+          "effects": {
+            "affinity": 1
+          }
+        }
+      ]
+    },
+    "talon_intro": {
+      "speaker": "Talon Rhyse",
+      "text": "Your ship landed in the middle of my problem. Lucky for you, I don't charge rescue rates until the second incident.",
+      "choices": [
+        {
+          "label": "Help me, and I'll get you off this moon.",
+          "check": {
+            "stat": "presence",
+            "dc": 12
+          },
+          "target": "talon_join",
+          "failTarget": "talon_test"
+        },
+        {
+          "label": "You look like you enjoy violence. Need work?",
+          "target": "talon_join",
+          "effects": {
+            "affinity": 1
+          }
+        },
+        {
+          "label": "Nice armor. Loot it from a corpse or a bad idea?",
+          "target": "talon_flirt",
+          "effects": {
+            "affinity": 2,
+            "romance": 1
+          }
+        }
+      ]
+    },
+    "talon_test": {
+      "speaker": "Talon Rhyse",
+      "text": "Not convinced. Kill the raider boss up the ridge and we can revisit your recruitment pitch.",
+      "choices": [
+        {
+          "label": "Fair.",
+          "target": null
+        }
+      ]
+    },
+    "talon_join": {
+      "speaker": "Talon Rhyse",
+      "text": "Fine. But if your command style is 'improvise and bleed,' say so now and save me the surprise.",
+      "choices": [
+        {
+          "label": "I prefer 'adapt and win.'",
+          "target": null,
+          "effects": {
+            "joinParty": true,
+            "affinity": 3
+          }
+        },
+        {
+          "label": "Bleeding is part of the vibe.",
+          "target": null,
+          "effects": {
+            "joinParty": true,
+            "affinity": 1,
+            "romance": 1
+          }
+        }
+      ]
+    },
+    "talon_flirt": {
+      "speaker": "Talon Rhyse",
+      "text": "Depends which piece of armor you're admiring. Careful, commander. I might assume that's a line.",
+      "choices": [
+        {
+          "label": "It is.",
+          "target": "talon_join",
+          "effects": {
+            "romance": 1
+          }
+        },
+        {
+          "label": "Maybe later.",
+          "target": "talon_join",
+          "effects": {
+            "affinity": 1
+          }
+        }
+      ]
+    }
+  }
+}

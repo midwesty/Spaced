@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Starfall Directive MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="splash" class="screen active">
+    <div class="splash-panel">
+      <h1>STARFALL DIRECTIVE</h1>
+      <p class="tagline">A gritty top-down sci-fi party RPG with survival, ship life, tactical combat, dialogue choices, stealth, crime, and galaxy travel.</p>
+      <div class="splash-actions">
+        <button id="newGameBtn">New Campaign</button>
+        <button id="continueBtn">Continue</button>
+        <button id="openCodexBtn">About / How To Play</button>
+      </div>
+      <details class="howto">
+        <summary>Starter controls</summary>
+        <div>
+          <p><strong>PC:</strong> left click to move/interact/select, right click on entities/items for quick actions, middle mouse or hold space + drag to pan camera, wheel to zoom.</p>
+          <p><strong>Phone:</strong> tap to move/interact/select, long press for quick actions, drag empty map space to pan, pinch or buttons to zoom.</p>
+          <p><strong>Combat:</strong> same map as exploration. Use action buttons, movement grid, inventories, and abilities.</p>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div id="creatorScreen" class="screen">
+    <div class="creator-layout">
+      <section class="creator-panel">
+        <h2>Create Commander</h2>
+        <div class="creator-grid">
+          <label>Name <input id="ccName" value="Rook Vey" /></label>
+          <label>Pronouns
+            <select id="ccPronouns">
+              <option>they/them</option>
+              <option>she/her</option>
+              <option>he/him</option>
+            </select>
+          </label>
+          <label>Origin Species
+            <select id="ccSpecies"></select>
+          </label>
+          <label>Profession
+            <select id="ccClass"></select>
+          </label>
+          <label>Background
+            <select id="ccBackground">
+              <option value="drifter">Drifter</option>
+              <option value="enforcer">Enforcer</option>
+              <option value="academy-dropout">Academy Dropout</option>
+              <option value="dock-rat">Dock Rat</option>
+              <option value="cult-runaway">Cult Runaway</option>
+              <option value="frontier-medic">Frontier Medic</option>
+            </select>
+          </label>
+          <label>Body Frame
+            <select id="ccBody">
+              <option value="lean">Lean</option>
+              <option value="average">Average</option>
+              <option value="broad">Broad</option>
+              <option value="heavy">Heavy</option>
+            </select>
+          </label>
+          <label>Skin / Shell Tone
+            <input id="ccSkin" type="color" value="#b88e74" />
+          </label>
+          <label>Hair / Crest Color
+            <input id="ccHair" type="color" value="#2f3d5a" />
+          </label>
+          <label>Eye / Lens Color
+            <input id="ccEyes" type="color" value="#93d7ff" />
+          </label>
+          <label>Outfit Accent
+            <input id="ccAccent" type="color" value="#d2a84b" />
+          </label>
+          <label>Origin Trait
+            <select id="ccTrait"></select>
+          </label>
+        </div>
+        <div class="creator-actions">
+          <button id="randomizeHeroBtn">Randomize</button>
+          <button id="startCampaignBtn">Begin Campaign</button>
+          <button class="secondary" id="backToMenuBtn">Back</button>
+        </div>
+      </section>
+
+      <section class="creator-preview">
+        <h3>Preview</h3>
+        <div id="paperDoll" class="paper-doll">
+          <div id="dollBody" class="doll-layer doll-body"></div>
+          <div id="dollArmor" class="doll-layer doll-armor"></div>
+          <div id="dollHead" class="doll-layer doll-head"></div>
+          <div id="dollHair" class="doll-layer doll-hair"></div>
+          <div id="dollAccent" class="doll-layer doll-accent"></div>
+        </div>
+        <div id="creatorSummary" class="creator-summary"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="gameRoot" class="screen">
+    <header id="hudTop">
+      <div class="hud-left">
+        <div class="logo-block">
+          <strong>STARFALL DIRECTIVE</strong>
+          <span id="worldClock">Cycle 1 · 06:00</span>
+        </div>
+        <div class="hud-chip"><span>Map</span><strong id="locationName">—</strong></div>
+        <div class="hud-chip"><span>Mode</span><strong id="modeName">Exploration</strong></div>
+        <div class="hud-chip"><span>Threat</span><strong id="threatName">Low</strong></div>
+      </div>
+      <div class="hud-right">
+        <button data-panel="journalPanel">Journal</button>
+        <button data-panel="mapPanel">Sector Map</button>
+        <button data-panel="shipPanel">Ship</button>
+        <button data-panel="inventoryPanel">Inventory</button>
+        <button data-panel="crewPanel">Crew</button>
+        <button data-panel="adminPanel" class="danger">Admin</button>
+      </div>
+    </header>
+
+    <aside id="partyStrip"></aside>
+
+    <main id="viewportWrap">
+      <div id="mapViewport">
+        <div id="tileLayer"></div>
+        <div id="entityLayer"></div>
+        <div id="effectLayer"></div>
+        <div id="selectionRing"></div>
+      </div>
+      <div id="mapControls">
+        <button id="zoomOutBtn">-</button>
+        <button id="zoomInBtn">+</button>
+        <button id="recenterBtn">Center</button>
+        <button id="endTurnBtn" class="combat-only">End Turn</button>
+      </div>
+      <div id="floatingActions"></div>
+    </main>
+
+    <footer id="hudBottom">
+      <div id="resourceBar"></div>
+      <div id="actionBar"></div>
+      <div id="messageLog"></div>
+    </footer>
+
+    <div id="panelHost">
+      <section id="journalPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Journal & Quest Log</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="journalBody"></div>
+      </section>
+      <section id="mapPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Sector Map & Travel</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="sectorMapBody"></div>
+      </section>
+      <section id="shipPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>The Scavenger's Wake</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="shipBody"></div>
+      </section>
+      <section id="inventoryPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Inventory & Containers</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="inventoryBody"></div>
+      </section>
+      <section id="crewPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Crew, Affinity & Romance</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="crewBody"></div>
+      </section>
+      <section id="adminPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Admin / Testing</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="adminBody"></div>
+      </section>
+      <section id="dialoguePanel" class="panel hidden draggable wide-panel">
+        <div class="panel-header"><h3>Dialogue</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="dialogueBody"></div>
+      </section>
+      <section id="inspectPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Inspect / Loot</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="inspectBody"></div>
+      </section>
+      <section id="codexPanel" class="panel hidden draggable">
+        <div class="panel-header"><h3>Codex / How It Works</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+        <div class="panel-body" id="codexBody"></div>
+      </section>
+    </div>
+
+    <div id="contextMenu" class="context-menu hidden"></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

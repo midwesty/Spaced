@@ -1,0 +1,5703 @@
+[
+  {
+    "id": "port_sable",
+    "name": "Port Sable Drydocks",
+    "threat": "Medium",
+    "width": 18,
+    "height": 12,
+    "tiles": [
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false,
+          "zone": "security_restricted",
+          "interactText": "Restricted civic access lane."
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": true,
+          "interactText": "A sealed berth with faded smuggler markings.",
+          "interactId": "wake_airlock"
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false,
+          "encounter": "dock_ambush"
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": true,
+          "interact": true,
+          "lootTable": [
+            {
+              "itemId": "field_satchel",
+              "qty": 1
+            },
+            {
+              "itemId": "ration_pack",
+              "qty": 1
+            }
+          ],
+          "interactText": "A split cargo crate lies open. Nobody is coming back for it."
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ]
+    ],
+    "actors": [
+      {
+        "id": "dock_scav_1",
+        "name": "Dock Scav",
+        "speciesId": "human",
+        "classId": "marshal",
+        "role": "neutral",
+        "factionId": "free",
+        "x": 6,
+        "y": 8,
+        "hpMax": 12,
+        "armor": 11,
+        "movement": 6,
+        "abilities": [
+          "precision_shot"
+        ],
+        "inventory": [
+          {
+            "itemId": "scrap_pistol",
+            "qty": 1
+          }
+        ],
+        "equipped": {
+          "mainhand": "scrap_pistol",
+          "armor": "field_coat"
+        },
+        "bio": "Just trying to survive the station shift.",
+        "dialogueId": null
+      },
+      {
+        "id": "civic_enforcer",
+        "name": "Civic Enforcer",
+        "speciesId": "human",
+        "classId": "marshal",
+        "role": "enemy",
+        "factionId": "station_civic",
+        "x": 15,
+        "y": 3,
+        "hpMax": 14,
+        "armor": 12,
+        "movement": 6,
+        "abilities": [
+          "precision_shot"
+        ],
+        "inventory": [
+          {
+            "itemId": "scrap_pistol",
+            "qty": 1
+          }
+        ],
+        "equipped": {
+          "mainhand": "scrap_pistol",
+          "armor": "field_coat"
+        },
+        "bio": "Port Sable civic security muscle."
+      }
+    ]
+  },
+  {
+    "id": "wake_interior",
+    "name": "Scavenger's Wake Interior",
+    "threat": "Low",
+    "width": 14,
+    "height": 9,
+    "tiles": [
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": true,
+          "interactText": "Bunks for crew rest. Safe zone for long rests."
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": true,
+          "interactText": "Galley station. Eventually craft better meals here."
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "metal",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": true,
+          "interactText": "Navigation table tied to sector travel."
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "floor",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ]
+    ],
+    "actors": []
+  },
+  {
+    "id": "ember_hollow",
+    "name": "Ember Hollow Ridge",
+    "threat": "High",
+    "width": 18,
+    "height": 12,
+    "tiles": [
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false,
+          "encounter": "ash_raiders"
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "dirt",
+          "blocked": false,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": true,
+          "interact": true,
+          "lootTable": [
+            {
+              "itemId": "water_cell",
+              "qty": 2
+            },
+            {
+              "itemId": "credits_chit",
+              "qty": 2
+            }
+          ],
+          "interactText": "A half-buried supply pod from a cracked convoy."
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "sand",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ]
+    ],
+    "actors": [
+      {
+        "id": "ash_boss",
+        "name": "Boss Krail",
+        "speciesId": "karrox",
+        "classId": "raider",
+        "role": "enemy",
+        "factionId": "void_reavers",
+        "x": 12,
+        "y": 4,
+        "hpMax": 22,
+        "armor": 13,
+        "movement": 5,
+        "abilities": [
+          "burst_fire"
+        ],
+        "inventory": [
+          {
+            "itemId": "scrap_pistol",
+            "qty": 1
+          }
+        ],
+        "equipped": {
+          "mainhand": "scrap_pistol",
+          "armor": "patch_armor"
+        },
+        "bio": "A dust-ridge tyrant pretending to be a king.",
+        "dialogueId": null
+      }
+    ]
+  },
+  {
+    "id": "glassreef",
+    "name": "Glassreef Transit Basin",
+    "threat": "Medium",
+    "width": 18,
+    "height": 12,
+    "tiles": [
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": true,
+          "interact": true,
+          "lootTable": [
+            {
+              "itemId": "focus_shard",
+              "qty": 1
+            }
+          ],
+          "interactText": "A relic shrine still hums beneath the waterline."
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false,
+          "encounter": "reef_ghouls"
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "toxic",
+          "blocked": false,
+          "cover": false,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ],
+      [
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        },
+        {
+          "type": "wall",
+          "blocked": true,
+          "cover": true,
+          "loot": false,
+          "interact": false
+        }
+      ]
+    ],
+    "actors": [
+      {
+        "id": "sector_seed_guard",
+        "name": "Reef Watcher",
+        "speciesId": "morrowkin",
+        "classId": "voidseer",
+        "role": "neutral",
+        "factionId": "reef_conclave",
+        "x": 10,
+        "y": 2,
+        "hpMax": 13,
+        "armor": 12,
+        "movement": 6,
+        "abilities": [
+          "rift_lance"
+        ],
+        "inventory": [
+          {
+            "itemId": "focus_shard",
+            "qty": 1
+          }
+        ],
+        "equipped": {
+          "mainhand": "focus_shard",
+          "armor": "weave_wrap"
+        },
+        "bio": "One of the few locals still willing to speak to offworlders.",
+        "dialogueId": "intro_station_master_who"
+      }
+    ]
+  }
+]
