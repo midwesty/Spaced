@@ -122,6 +122,8 @@ button.danger { border-color: #ad5d67; }
   width: 1600px; height: 1200px; transform-origin: center center;
 }
 #tileLayer, #entityLayer, #effectLayer, #selectionRing { position: absolute; inset: 0; }
+#entityLayer, #effectLayer { pointer-events: none; }
+#tileLayer { pointer-events: auto; }
 .tile {
   position: absolute; width: var(--tile); height: var(--tile); border: 1px solid rgba(255,255,255,0.03);
   display: flex; align-items: center; justify-content: center; font-size: 9px; color: rgba(255,255,255,0.15);
@@ -141,7 +143,7 @@ button.danger { border-color: #ad5d67; }
 .entity {
   position: absolute; width: calc(var(--tile) - 8px); height: calc(var(--tile) - 8px);
   border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
-  border: 2px solid rgba(255,255,255,0.2); transform: translate(4px, 4px);
+  border: 2px solid rgba(255,255,255,0.2); transform: translate(4px, 4px); pointer-events: auto;
   box-shadow: 0 6px 14px rgba(0,0,0,.3);
 }
 .entity.player { background: linear-gradient(#3f8bff,#2550b5); }
@@ -153,7 +155,7 @@ button.danger { border-color: #ad5d67; }
 .entity.selected { outline: 3px solid rgba(119,184,255,.7); outline-offset: 2px; }
 .entity .bubble {
   position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(8,13,18,.92);
-  padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); font-size: 10px; color: var(--muted);
+  padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); font-size: 10px; color: var(--muted); pointer-events: none;
 }
 #selectionRing {
   pointer-events: none; border: 2px solid rgba(119,184,255,.7); border-radius: 50%; width: var(--tile); height: var(--tile); display: none;
@@ -178,6 +180,19 @@ button.danger { border-color: #ad5d67; }
   color: var(--muted); font-size: 13px;
 }
 #messageLog div { margin-bottom: 4px; }
+
+.turn-chip {
+  background: rgba(255,255,255,0.08); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px;
+}
+.action-chip.active {
+  border-color: var(--accent); box-shadow: 0 0 0 1px rgba(119,184,255,.35);
+}
+.panel-header > div {
+  display: flex; gap: 6px; align-items: center;
+}
+.close-btn, .collapse-btn {
+  position: relative; z-index: 2; touch-action: manipulation;
+}
 
 .panel {
   position: absolute; top: 90px; right: 20px; width: 420px; max-width: calc(100vw - 20px); max-height: calc(100vh - 190px);

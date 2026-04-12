@@ -25,10 +25,16 @@ export class GameEngine {
       centerOnActor: actor => this.centerOnActor(actor),
       handleTileClick: (x, y, e) => this.handleTileClick(x, y, e),
       handleTileContext: (x, y, e) => this.handleTileContext(x, y, e),
+      handleActorPrimary: (id, e) => this.handleActorPrimary(id, e),
+      handleActorLongPress: (id, x, y) => this.showActorContext(id, x, y),
       selectActor: id => this.selectActor(id),
       interactWithActor: id => this.interactWithActor(id),
       showActorContext: (id, x, y) => this.showActorContext(id, x, y),
-      setPendingAction: action => { this.pendingAction = action; this.log(`Prepared action: ${action}.`); this.renderAll(); },
+      setPendingAction: action => {
+        this.pendingAction = action;
+        this.log(action === 'move' ? 'Movement readied. Select a destination.' : `Prepared action: ${action}. Select a target.`);
+        this.renderAll();
+      },
       toggleStealth: id => this.toggleStealth(id),
       longRest: () => this.longRest(),
       openPanel: id => this.openPanel(id),
@@ -143,7 +149,7 @@ export class GameEngine {
       if (actor) this.centerOnActor(actor);
     });
     $('#endTurnBtn').addEventListener('click', () => this.endTurn());
-    document.addEventListener('click', (e) => {
+    document.addEventListener('pointerdown', (e) => {
       if (!e.target.closest('#contextMenu')) $('#contextMenu').classList.add('hidden');
     });
 
@@ -285,6 +291,37 @@ export class GameEngine {
     this.renderAll();
   }
 
+  handleActorPrimary(id, e) {
+    const actor = this.state.roster.find(a => a.id === id);
+    const selected = this.selectedActor();
+    if (!actor) return;
+
+    if (this.pendingAction === 'attack') {
+      if (!selected || selected.id === actor.id) return this.log('Choose another target.');
+      this.tryAttackAt(actor.x, actor.y);
+      return;
+    }
+    if (this.pendingAction === 'talk') {
+      this.tryTalkAt(actor.x, actor.y);
+      return;
+    }
+    if (this.pendingAction === 'ability') {
+      this.tryUseFirstAbilityAt(actor.x, actor.y);
+      return;
+    }
+    if (this.pendingAction === 'loot') {
+      this.tryLootAt(actor.x, actor.y);
+      return;
+    }
+
+    if (selected?.id === actor.id) {
+      this.interactWithActor(actor.id);
+      return;
+    }
+
+    this.selectActor(actor.id);
+  }
+
   handleTileClick(x, y) {
     const actor = this.selectedActor();
     if (!actor || actor.dead) return;
@@ -292,6 +329,7 @@ export class GameEngine {
     if (this.pendingAction === 'talk') return this.tryTalkAt(x, y);
     if (this.pendingAction === 'loot') return this.tryLootAt(x, y);
     if (this.pendingAction === 'ability') return this.tryUseFirstAbilityAt(x, y);
+    if (this.pendingAction === 'move') return this.moveActorToward(actor, x, y);
     return this.moveActorToward(actor, x, y);
   }
 
@@ -305,6 +343,10 @@ export class GameEngine {
 
   moveActorToward(actor, x, y) {
     if (!actor) return;
+    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== actor.id) {
+      this.log(`It is not ${actor.name}'s turn.`);
+      return;
+    }
     const map = this.currentMap();
     if (!map.tiles[y]?.[x]) return;
     if (map.tiles[y][x].blocked) {
@@ -321,6 +363,7 @@ export class GameEngine {
     this.resolveTileTriggers(actor, x, y);
     this.advanceTime(this.state.combat.active ? 1 : 6);
     this.pendingAction = null;
+    this.centerOnActor(actor);
     this.renderAll();
   }
 
@@ -341,6 +384,11 @@ export class GameEngine {
 
   tryAttackAt(x, y) {
     const attacker = this.selectedActor();
+    if (!attacker || attacker.dead) return;
+    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== attacker.id) {
+      this.log(`It is not ${attacker.name}'s turn.`);
+      return;
+    }
     const target = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y && a.id !== attacker.id);
     if (!target) {
       this.log('No target there.');
@@ -353,17 +401,24 @@ export class GameEngine {
   tryTalkAt(x, y) {
     const actor = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y && a.dialogueId);
     if (!actor) return this.log('No one there wants to talk.');
+    this.pendingAction = null;
     this.interactWithActor(actor.id);
   }
 
   tryLootAt(x, y) {
     const tile = this.currentMap().tiles[y][x];
     if (!tile.loot) return this.log('Nothing obvious to loot.');
+    this.pendingAction = null;
     this.inspectTile(x, y);
   }
 
   tryUseFirstAbilityAt(x, y) {
     const actor = this.selectedActor();
+    if (!actor || actor.dead) return;
+    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== actor.id) {
+      this.log(`It is not ${actor.name}'s turn.`);
+      return;
+    }
     const abilityId = actor.abilities[0];
     const ability = getById(this.data.abilities, abilityId);
     const target = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y);
@@ -374,6 +429,7 @@ export class GameEngine {
       this.log(`${actor.name} uses ${ability.name} on ${target.name} for ${amt}.`);
       this.consumeAction(actor, ability.costType || 'action');
       this.advanceTime(1);
+      this.pendingAction = null;
       this.renderAll();
       return;
     }
@@ -386,6 +442,7 @@ export class GameEngine {
       this.log(`${target.name} gains ${ability.applyStatus}.`);
       this.consumeAction(actor, ability.costType || 'bonus');
       this.advanceTime(1);
+      this.pendingAction = null;
       this.renderAll();
     }
   }
@@ -612,6 +669,10 @@ export class GameEngine {
 
   attack(attacker, target, ability = null) {
     if (!attacker || !target || attacker.dead || target.dead) return;
+    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== attacker.id) {
+      this.log(`It is not ${attacker.name}'s turn.`);
+      return;
+    }
     const weapon = getById(this.data.items, attacker.equipped.mainhand);
     const attackBonus = statMod(attacker.stats.agility) + attacker.level + (weapon?.attackBonus || 0) + (ability?.attackBonus || 0);
     const roll = rollDice('1d20');
@@ -709,7 +770,9 @@ export class GameEngine {
     }
     const nextId = this.state.combat.turnOrder[this.state.combat.currentTurnIndex];
     this.state.selectedActorId = nextId;
+    this.pendingAction = null;
     const next = this.state.roster.find(a => a.id === nextId);
+    if (next) this.centerOnActor(next);
     if (next && next.ai !== 'player' && !this.state.party.includes(next.id)) {
       this.runAITurn(next);
       return this.endTurn();

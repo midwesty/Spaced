@@ -1,5 +1,33 @@
 import { $, $$, clamp, createEl, formatTime, getById } from './utils.js';
 
+function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 10 } = {}) {
+  let timer = null;
+  let startX = 0, startY = 0;
+
+  const clear = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  };
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button != null && e.button !== 0) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    clear();
+    timer = setTimeout(() => {
+      timer = null;
+      onLongPress(e);
+    }, threshold);
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!timer) return;
+    if (Math.abs(e.clientX - startX) > moveTolerance || Math.abs(e.clientY - startY) > moveTolerance) clear();
+  });
+
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => el.addEventListener(type, clear));
+}
+
 export function initPanels(state, api) {
   $$('.panel').forEach((panel, idx) => {
     panel.style.left = `${40 + idx * 18}px`;
@@ -7,11 +35,20 @@ export function initPanels(state, api) {
     const header = panel.querySelector('.panel-header');
     const closeBtn = panel.querySelector('.close-btn');
     const collapseBtn = panel.querySelector('.collapse-btn');
+    const stopHeaderButton = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    ['pointerdown', 'click'].forEach(type => {
+      closeBtn.addEventListener(type, stopHeaderButton);
+      collapseBtn.addEventListener(type, stopHeaderButton);
+    });
     closeBtn.addEventListener('click', () => panel.classList.add('hidden'));
     collapseBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
 
     let dragging = false, offX = 0, offY = 0;
     header.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
       dragging = true;
       const rect = panel.getBoundingClientRect();
       offX = e.clientX - rect.left;
@@ -25,7 +62,7 @@ export function initPanels(state, api) {
       panel.style.right = 'auto';
       panel.style.transform = 'none';
     });
-    header.addEventListener('pointerup', () => dragging = false);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => header.addEventListener(type, () => dragging = false));
   });
 
   $$('[data-panel]').forEach(btn => btn.addEventListener('click', () => {
@@ -45,8 +82,11 @@ export function initPanels(state, api) {
 export function renderTopHUD(state, data) {
   $('#worldClock').textContent = formatTime(state.timeMinutes);
   $('#locationName').textContent = currentMap(state, data)?.name || '—';
-  $('#modeName').textContent = state.combat.active ? 'Combat' : 'Exploration';
-  $('#threatName').textContent = state.combat.active ? 'Engaged' : (currentMap(state, data)?.threat || 'Low');
+  const currentTurnActor = state.combat.active
+    ? state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex])
+    : null;
+  $('#modeName').textContent = state.combat.active ? `Combat · ${currentTurnActor?.name || '—'}` : 'Exploration';
+  $('#threatName').textContent = state.combat.active ? `Round ${state.combat.round}` : (currentMap(state, data)?.threat || 'Low');
   document.body.classList.toggle('in-combat', !!state.combat.active);
 }
 
@@ -98,7 +138,8 @@ export function renderMap(state, data, api) {
       tile.dataset.x = x;
       tile.dataset.y = y;
       tile.addEventListener('click', (e) => api.handleTileClick(x, y, e));
-      tile.addEventListener('contextmenu', (e) => { e.preventDefault(); api.handleTileContext(x, y, e); });
+      bindLongPress(tile, (e) => api.handleTileContext(x, y, e));
+      tile.addEventListener('contextmenu', (e) => e.preventDefault());
       tileLayer.appendChild(tile);
     }
   }
@@ -109,9 +150,12 @@ export function renderMap(state, data, api) {
     ent.style.left = `${actor.x * size}px`;
     ent.style.top = `${actor.y * size}px`;
     ent.innerHTML = `<span>${actor.name.split(' ').map(w => w[0]).slice(0,2).join('')}</span><div class="bubble">${actor.name}</div>`;
-    ent.addEventListener('click', (e) => { e.stopPropagation(); api.selectActor(actor.id, e); });
-    ent.addEventListener('dblclick', (e) => { e.stopPropagation(); api.interactWithActor(actor.id); });
-    ent.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); api.showActorContext(actor.id, e.clientX, e.clientY); });
+    ent.addEventListener('click', (e) => { e.stopPropagation(); api.handleActorPrimary(actor.id, e); });
+    bindLongPress(ent, (e) => {
+      e.stopPropagation();
+      api.handleActorLongPress(actor.id, e.clientX, e.clientY);
+    });
+    ent.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); });
     entityLayer.appendChild(ent);
   });
 }
@@ -139,6 +183,16 @@ export function renderActionBar(state, data, api) {
   root.innerHTML = '';
   const actor = state.roster.find(a => a.id === state.selectedActorId);
   if (!actor) return;
+
+  if (state.combat.active) {
+    const currentTurnActor = state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex]);
+    const movementLeft = state.combat.movementLeft[currentTurnActor?.id] ?? currentTurnActor?.moveRange ?? 0;
+    const turnInfo = createEl('div', { class: 'turn-chip' }, `<strong>Turn:</strong> ${currentTurnActor?.name || '—'} · <strong>Move:</strong> ${movementLeft}`);
+    root.appendChild(turnInfo);
+  } else {
+    root.appendChild(createEl('div', { class: 'turn-chip' }, `<strong>Selected:</strong> ${actor.name}`));
+  }
+
   const actions = [
     ['Move', () => api.setPendingAction('move')],
     ['Attack', () => api.setPendingAction('attack')],
@@ -150,7 +204,8 @@ export function renderActionBar(state, data, api) {
     ['Rest', () => api.longRest()]
   ];
   actions.forEach(([label, fn]) => {
-    const btn = createEl('button', { class: 'action-chip', onclick: fn }, label);
+    const active = state.pendingAction === label.toLowerCase();
+    const btn = createEl('button', { class: `action-chip ${active ? 'active' : ''}`, onclick: fn }, label);
     root.appendChild(btn);
   });
 }
@@ -210,7 +265,8 @@ export function renderInventory(state, data, api) {
     const inner = createEl('div', { class: 'item', draggable: 'true' }, `<strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div>`);
     inner.addEventListener('dragstart', ev => ev.dataTransfer.setData('text/plain', JSON.stringify({ ownerId: actor.id, idx })));
     inner.addEventListener('click', (e) => api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY));
-    inner.addEventListener('contextmenu', (e) => { e.preventDefault(); api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY, true); });
+    bindLongPress(inner, (e) => api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY, true));
+    inner.addEventListener('contextmenu', (e) => e.preventDefault());
     itemEl.appendChild(inner);
     itemEl.addEventListener('dragover', e => e.preventDefault());
     itemEl.addEventListener('drop', e => api.handleInventoryDrop(e, actor.id, idx));
@@ -231,6 +287,7 @@ export function renderInventory(state, data, api) {
     const slot = createEl('div', { class: 'slot' });
     slot.innerHTML = `<div class="item"><strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div></div>`;
     slot.addEventListener('click', () => api.inspectCargoItem(idx));
+    bindLongPress(slot, () => api.inspectCargoItem(idx));
     stashGrid.appendChild(slot);
   });
   for (let i = state.ship.cargo.length; i < 15; i++) stashGrid.appendChild(createEl('div', { class: 'slot' }, `<span class="small">Empty</span>`));
