@@ -263,3 +263,64 @@ button.danger { border-color: #ad5d67; }
   #hudTop, #hudBottom { gap: 6px; }
   .hud-right button { padding: 6px 8px; font-size: 13px; }
 }
+
+
+.combat-roster, .ability-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.combatant-chip {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.combatant-chip.current { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(119,184,255,.35); }
+.combatant-chip.enemy { border-color: rgba(255,110,110,.55); }
+.combatant-chip.ally, .combatant-chip.player { border-color: rgba(134,223,163,.55); }
+.combatant-chip.dead { opacity: 0.55; text-decoration: line-through; }
+.ability-chip { font-size: 12px; }
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+}
+#actionBar {
+  align-items: flex-start;
+}
+
+@media (max-width: 920px) {
+  #mapViewport {
+    width: 1400px;
+    height: 1050px;
+  }
+  #mapControls {
+    top: calc(env(safe-area-inset-top, 0px) + 84px);
+    bottom: auto;
+    right: 8px;
+    left: auto;
+    flex-direction: column;
+    max-width: none;
+    width: auto;
+  }
+  #zoomOutBtn, #zoomInBtn, #recenterBtn, #endTurnBtn {
+    min-width: 72px;
+  }
+  #hudBottom {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  #resourceBar, #actionBar {
+    row-gap: 6px;
+  }
+  .turn-chip, .combat-roster, .ability-strip {
+    width: 100%;
+  }
+  #messageLog {
+    max-height: 60px;
+  }
+}

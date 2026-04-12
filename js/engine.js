@@ -8,12 +8,14 @@ export class GameEngine {
     this.state = loadState() || freshState(data);
     this.pendingAction = null;
     this.drag = { active: false, pointerId: null, lastX: 0, lastY: 0 };
+    this.pinch = { active: false, startDistance: 0, startZoom: 1 };
     this.viewport = $('#mapViewport');
     this.api = this.buildApi();
     initPanels(this.state, this.api);
     this.bindShellUI();
     this.ensureWorldInitialized();
     this.renderAll();
+    requestAnimationFrame(() => this.fitViewportToScreen(true));
     this.startLoop();
   }
 
@@ -32,7 +34,14 @@ export class GameEngine {
       showActorContext: (id, x, y) => this.showActorContext(id, x, y),
       setPendingAction: action => {
         this.pendingAction = action;
-        this.log(action === 'move' ? 'Movement readied. Select a destination.' : `Prepared action: ${action}. Select a target.`);
+        const type = this.pendingActionType();
+        if (type === 'move') this.log('Movement readied. Select a destination.');
+        else if (type === 'ability') {
+          const ability = getById(this.data.abilities, this.pendingActionAbilityId());
+          this.log(`Prepared technique: ${ability?.name || 'Ability'}. Select a target.`);
+        } else {
+          this.log(`Prepared action: ${type}. Select a target.`);
+        }
         this.renderAll();
       },
       toggleStealth: id => this.toggleStealth(id),
@@ -124,63 +133,99 @@ export class GameEngine {
     return applyDerivedStats(actor, this.data);
   }
 
-  bindShellUI() {
-    $('#newGameBtn').addEventListener('click', () => {
-      $('#splash').classList.remove('active');
-      $('#creatorScreen').classList.add('active');
-      this.populateCreator();
-    });
-    $('#continueBtn').addEventListener('click', () => {
-      $('#splash').classList.remove('active');
-      $('#gameRoot').classList.add('active');
-      renderCodex();
-      this.renderAll();
-    });
-    $('#backToMenuBtn').addEventListener('click', () => {
-      $('#creatorScreen').classList.remove('active');
-      $('#splash').classList.add('active');
-    });
-    $('#randomizeHeroBtn').addEventListener('click', () => this.randomizeCreator());
-    $('#startCampaignBtn').addEventListener('click', () => this.commitCreatorAndStart());
-    $('#zoomInBtn').addEventListener('click', () => this.setZoom(this.state.zoom + 0.1));
-    $('#zoomOutBtn').addEventListener('click', () => this.setZoom(this.state.zoom - 0.1));
-    $('#recenterBtn').addEventListener('click', () => {
-      const actor = this.selectedActor();
-      if (actor) this.centerOnActor(actor);
-    });
-    $('#endTurnBtn').addEventListener('click', () => this.endTurn());
-    document.addEventListener('pointerdown', (e) => {
-      if (!e.target.closest('#contextMenu')) $('#contextMenu').classList.add('hidden');
-    });
 
-    this.viewport.parentElement.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.entity') || e.target.closest('.tile') || e.target.closest('.panel')) return;
-      this.drag.active = true;
-      this.drag.pointerId = e.pointerId;
-      this.drag.lastX = e.clientX;
-      this.drag.lastY = e.clientY;
-      this.viewport.parentElement.setPointerCapture(e.pointerId);
-    });
-    this.viewport.parentElement.addEventListener('pointermove', (e) => {
-      if (!this.drag.active || this.drag.pointerId !== e.pointerId) return;
-      const dx = e.clientX - this.drag.lastX;
-      const dy = e.clientY - this.drag.lastY;
-      this.drag.lastX = e.clientX;
-      this.drag.lastY = e.clientY;
-      this.state.camera.x += dx;
-      this.state.camera.y += dy;
-      this.applyViewportTransform();
-    });
-    this.viewport.parentElement.addEventListener('pointerup', (e) => {
-      if (this.drag.pointerId === e.pointerId) this.drag.active = false;
-    });
-    this.viewport.parentElement.addEventListener('wheel', (e) => {
+bindShellUI() {
+  $('#newGameBtn').addEventListener('click', () => {
+    $('#splash').classList.remove('active');
+    $('#creatorScreen').classList.add('active');
+    this.populateCreator();
+  });
+  $('#continueBtn').addEventListener('click', () => {
+    $('#splash').classList.remove('active');
+    $('#gameRoot').classList.add('active');
+    renderCodex();
+    this.renderAll();
+    requestAnimationFrame(() => this.fitViewportToScreen(true));
+  });
+  $('#backToMenuBtn').addEventListener('click', () => {
+    $('#creatorScreen').classList.remove('active');
+    $('#splash').classList.add('active');
+  });
+  $('#randomizeHeroBtn').addEventListener('click', () => this.randomizeCreator());
+  $('#startCampaignBtn').addEventListener('click', () => this.commitCreatorAndStart());
+  $('#zoomInBtn').addEventListener('click', () => this.setZoom(this.state.zoom + 0.1));
+  $('#zoomOutBtn').addEventListener('click', () => this.setZoom(this.state.zoom - 0.1));
+  $('#recenterBtn').addEventListener('click', () => {
+    const actor = this.commandActor() || this.selectedActor();
+    if (actor) this.centerOnActor(actor);
+  });
+  $('#endTurnBtn').addEventListener('click', () => this.endTurn());
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('#contextMenu')) $('#contextMenu').classList.add('hidden');
+  });
+
+  const wrap = this.viewport.parentElement;
+
+  wrap.addEventListener('pointerdown', (e) => {
+    if (this.pinch.active) return;
+    if (e.target.closest('.entity') || e.target.closest('.tile') || e.target.closest('.panel') || e.target.closest('#mapControls')) return;
+    this.drag.active = true;
+    this.drag.pointerId = e.pointerId;
+    this.drag.lastX = e.clientX;
+    this.drag.lastY = e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (!this.drag.active || this.drag.pointerId !== e.pointerId || this.pinch.active) return;
+    const dx = e.clientX - this.drag.lastX;
+    const dy = e.clientY - this.drag.lastY;
+    this.drag.lastX = e.clientX;
+    this.drag.lastY = e.clientY;
+    this.state.camera.x += dx;
+    this.state.camera.y += dy;
+    this.applyViewportTransform();
+  });
+  wrap.addEventListener('pointerup', (e) => {
+    if (this.drag.pointerId === e.pointerId) this.drag.active = false;
+  });
+  wrap.addEventListener('pointercancel', () => {
+    this.drag.active = false;
+    this.pinch.active = false;
+  });
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    this.setZoom(this.state.zoom + (e.deltaY < 0 ? 0.08 : -0.08));
+  }, { passive: false });
+
+  wrap.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      this.pinch.active = true;
+      this.drag.active = false;
+      this.pinch.startDistance = this.getTouchDistance(e.touches);
+      this.pinch.startZoom = this.state.zoom;
+    }
+  }, { passive: false });
+
+  wrap.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && this.pinch.active) {
       e.preventDefault();
-      this.setZoom(this.state.zoom + (e.deltaY < 0 ? 0.08 : -0.08));
-    }, { passive: false });
-  }
+      const nextDistance = this.getTouchDistance(e.touches);
+      if (!this.pinch.startDistance) return;
+      const scale = nextDistance / this.pinch.startDistance;
+      this.setZoom(this.pinch.startZoom * scale);
+    }
+  }, { passive: false });
 
-  populateCreator() {
+  wrap.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) this.pinch.active = false;
+  }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    this.fitViewportToScreen(false);
+  });
+}
+
+populateCreator() {
     const speciesSel = $('#ccSpecies'), classSel = $('#ccClass'), traitSel = $('#ccTrait');
     speciesSel.innerHTML = this.data.species.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
     classSel.innerHTML = this.data.classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
@@ -240,6 +285,7 @@ export class GameEngine {
     $('#gameRoot').classList.add('active');
     this.triggerIntro();
     this.renderAll();
+    requestAnimationFrame(() => this.fitViewportToScreen(true));
   }
 
   triggerIntro() {
@@ -253,8 +299,116 @@ export class GameEngine {
 
   currentMap() { return getById(this.data.maps, this.state.mapId); }
   selectedActor() { return this.state.roster.find(a => a.id === this.state.selectedActorId); }
+  currentTurnActor() {
+    if (!this.state.combat.active) return null;
+    return this.state.roster.find(a => a.id === this.state.combat.turnOrder[this.state.combat.currentTurnIndex]) || null;
+  }
+  commandActor() {
+    return this.currentTurnActor() || this.selectedActor();
+  }
+  pendingActionType() {
+    return typeof this.pendingAction === 'string' ? this.pendingAction : this.pendingAction?.type || null;
+  }
+  pendingActionAbilityId() {
+    return typeof this.pendingAction === 'object' ? this.pendingAction?.abilityId || null : null;
+  }
+  getTouchDistance(touches) {
+    const [a, b] = touches;
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  }
+  fitViewportToScreen(force = false) {
+    const wrap = this.viewport?.parentElement;
+    const map = this.currentMap();
+    if (!wrap || !map) return;
+    const tileSize = this.data.config.map.tileSize;
+    const mapWidth = map.width * tileSize;
+    const mapHeight = map.height * tileSize;
+    const availableWidth = Math.max(220, wrap.clientWidth - 24);
+    const availableHeight = Math.max(220, wrap.clientHeight - 24);
+    const fitZoom = Math.min(1, availableWidth / mapWidth, availableHeight / mapHeight);
+    const targetZoom = clamp(fitZoom, 0.22, 2.2);
+    if (force || window.innerWidth <= 920 || this.state.zoom > targetZoom) {
+      this.state.zoom = targetZoom;
+      this.applyViewportTransform();
+    }
+  }
+  ensureActorResources(actor) {
+    if (!actor) return;
+    const cls = getById(this.data.classes, actor.classId) || {};
+    actor.powerPools ??= {};
+    actor.abilityUses ??= {};
+
+    const configuredPools = cls.powerPools || {};
+    Object.entries(configuredPools).forEach(([poolId, conf]) => {
+      actor.powerPools[poolId] ??= {
+        label: conf.label || poolId,
+        current: conf.max ?? 0,
+        max: conf.max ?? 0,
+        recharge: conf.recharge || 'longRest'
+      };
+      actor.powerPools[poolId].max = conf.max ?? actor.powerPools[poolId].max ?? 0;
+      if (actor.powerPools[poolId].current == null) actor.powerPools[poolId].current = actor.powerPools[poolId].max;
+      actor.powerPools[poolId].label = conf.label || actor.powerPools[poolId].label;
+      actor.powerPools[poolId].recharge = conf.recharge || actor.powerPools[poolId].recharge || 'longRest';
+    });
+
+    actor.abilities.forEach(abilityId => {
+      const ability = getById(this.data.abilities, abilityId);
+      if (!ability?.usesPerRest) return;
+      actor.abilityUses[abilityId] ??= { current: ability.usesPerRest, max: ability.usesPerRest, recharge: ability.recharge || 'longRest' };
+      actor.abilityUses[abilityId].max = ability.usesPerRest;
+      actor.abilityUses[abilityId].recharge = ability.recharge || actor.abilityUses[abilityId].recharge || 'longRest';
+      if (actor.abilityUses[abilityId].current == null) actor.abilityUses[abilityId].current = actor.abilityUses[abilityId].max;
+    });
+  }
+  isCurrentTurnActor(actor) {
+    if (!this.state.combat.active) return true;
+    return this.state.combat.turnOrder[this.state.combat.currentTurnIndex] === actor?.id;
+  }
+  hasSpentCost(actor, type = 'action') {
+    if (!this.state.combat.active || !actor) return false;
+    if (type === 'bonus') return !!this.state.combat.bonusActed[actor.id];
+    if (type === 'reaction') return !!this.state.combat.reactionSpent?.[actor.id];
+    if (type === 'free' || type === 'none' || type === 'move') return false;
+    return !!this.state.combat.acted[actor.id];
+  }
+  canAffordAbility(actor, ability) {
+    this.ensureActorResources(actor);
+    if (!ability) return { ok: true };
+    if (ability.powerSource) {
+      const pool = actor.powerPools?.[ability.powerSource];
+      const cost = ability.slotCost ?? 1;
+      if (!pool || pool.current < cost) return { ok: false, reason: `${pool?.label || ability.powerSource} depleted.` };
+    }
+    if (ability.usesPerRest) {
+      const entry = actor.abilityUses?.[ability.id];
+      if (!entry || entry.current <= 0) return { ok: false, reason: `${ability.name} is out of uses.` };
+    }
+    return { ok: true };
+  }
+  canSpendCost(actor, type = 'action', ability = null) {
+    if (!actor) return { ok: false, reason: 'No active actor.' };
+    if (!this.state.combat.active) return this.canAffordAbility(actor, ability);
+    if (!this.isCurrentTurnActor(actor)) return { ok: false, reason: `It is not ${actor.name}'s turn.` };
+    if (this.hasSpentCost(actor, type)) {
+      const label = type === 'bonus' ? 'bonus action' : type === 'reaction' ? 'reaction' : 'action';
+      return { ok: false, reason: `${actor.name} has already spent their ${label}.` };
+    }
+    return this.canAffordAbility(actor, ability);
+  }
+  spendAbilityResources(actor, ability) {
+    this.ensureActorResources(actor);
+    if (!ability) return;
+    if (ability.powerSource && actor.powerPools?.[ability.powerSource]) {
+      actor.powerPools[ability.powerSource].current = Math.max(0, actor.powerPools[ability.powerSource].current - (ability.slotCost ?? 1));
+    }
+    if (ability.usesPerRest && actor.abilityUses?.[ability.id]) {
+      actor.abilityUses[ability.id].current = Math.max(0, actor.abilityUses[ability.id].current - 1);
+    }
+  }
 
   renderAll() {
+    this.state.ui.pendingAction = this.pendingAction;
     renderTopHUD(this.state, this.data);
     renderPartyStrip(this.state, this.data, this.api);
     renderMap(this.state, this.data, this.api);
@@ -276,7 +430,7 @@ export class GameEngine {
     this.viewport.style.transform = `translate(calc(-50% + ${this.state.camera.x}px), calc(-50% + ${this.state.camera.y}px)) scale(${this.state.zoom})`;
   }
   setZoom(val) {
-    this.state.zoom = clamp(val, 0.6, 1.8);
+    this.state.zoom = clamp(val, 0.22, 2.2);
     this.applyViewportTransform();
   }
   centerOnActor(actor) {
@@ -296,20 +450,23 @@ export class GameEngine {
     const selected = this.selectedActor();
     if (!actor) return;
 
-    if (this.pendingAction === 'attack') {
-      if (!selected || selected.id === actor.id) return this.log('Choose another target.');
+    const actionType = this.pendingActionType();
+
+    if (actionType === 'attack') {
+      const commandActor = this.commandActor();
+      if (!commandActor || commandActor.id === actor.id) return this.log('Choose another target.');
       this.tryAttackAt(actor.x, actor.y);
       return;
     }
-    if (this.pendingAction === 'talk') {
+    if (actionType === 'talk') {
       this.tryTalkAt(actor.x, actor.y);
       return;
     }
-    if (this.pendingAction === 'ability') {
-      this.tryUseFirstAbilityAt(actor.x, actor.y);
+    if (actionType === 'ability') {
+      this.tryUseAbilityAt(actor.x, actor.y, this.pendingActionAbilityId());
       return;
     }
-    if (this.pendingAction === 'loot') {
+    if (actionType === 'loot') {
       this.tryLootAt(actor.x, actor.y);
       return;
     }
@@ -323,13 +480,14 @@ export class GameEngine {
   }
 
   handleTileClick(x, y) {
-    const actor = this.selectedActor();
+    const actor = this.commandActor();
     if (!actor || actor.dead) return;
-    if (this.pendingAction === 'attack') return this.tryAttackAt(x, y);
-    if (this.pendingAction === 'talk') return this.tryTalkAt(x, y);
-    if (this.pendingAction === 'loot') return this.tryLootAt(x, y);
-    if (this.pendingAction === 'ability') return this.tryUseFirstAbilityAt(x, y);
-    if (this.pendingAction === 'move') return this.moveActorToward(actor, x, y);
+    const actionType = this.pendingActionType();
+    if (actionType === 'attack') return this.tryAttackAt(x, y);
+    if (actionType === 'talk') return this.tryTalkAt(x, y);
+    if (actionType === 'loot') return this.tryLootAt(x, y);
+    if (actionType === 'ability') return this.tryUseAbilityAt(x, y, this.pendingActionAbilityId());
+    if (actionType === 'move') return this.moveActorToward(actor, x, y);
     return this.moveActorToward(actor, x, y);
   }
 
@@ -383,10 +541,11 @@ export class GameEngine {
   }
 
   tryAttackAt(x, y) {
-    const attacker = this.selectedActor();
+    const attacker = this.commandActor();
     if (!attacker || attacker.dead) return;
-    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== attacker.id) {
-      this.log(`It is not ${attacker.name}'s turn.`);
+    const costCheck = this.canSpendCost(attacker, 'action');
+    if (!costCheck.ok) {
+      this.log(costCheck.reason);
       return;
     }
     const target = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y && a.id !== attacker.id);
@@ -412,42 +571,55 @@ export class GameEngine {
     this.inspectTile(x, y);
   }
 
-  tryUseFirstAbilityAt(x, y) {
-    const actor = this.selectedActor();
-    if (!actor || actor.dead) return;
-    if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== actor.id) {
-      this.log(`It is not ${actor.name}'s turn.`);
-      return;
-    }
-    const abilityId = actor.abilities[0];
-    const ability = getById(this.data.abilities, abilityId);
-    const target = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y);
-    if (!ability) return;
-    if (ability.kind === 'heal' && target) {
-      const amt = rand(4, 9) + statMod(actor.stats.tech);
-      target.hp = clamp(target.hp + amt, 0, target.hpMax);
-      this.log(`${actor.name} uses ${ability.name} on ${target.name} for ${amt}.`);
-      this.consumeAction(actor, ability.costType || 'action');
-      this.advanceTime(1);
-      this.pendingAction = null;
-      this.renderAll();
-      return;
-    }
-    if (ability.kind === 'attack' && target) {
-      this.attack(actor, target, ability);
-      return;
-    }
-    if (ability.kind === 'buff' && target) {
-      if (!target.statuses.includes(ability.applyStatus)) target.statuses.push(ability.applyStatus);
-      this.log(`${target.name} gains ${ability.applyStatus}.`);
-      this.consumeAction(actor, ability.costType || 'bonus');
-      this.advanceTime(1);
-      this.pendingAction = null;
-      this.renderAll();
-    }
+
+tryUseAbilityAt(x, y, abilityId = null) {
+  const actor = this.commandActor();
+  if (!actor || actor.dead) return;
+  const chosenAbilityId = abilityId || actor.abilities[0];
+  const ability = getById(this.data.abilities, chosenAbilityId);
+  const target = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y);
+  if (!ability) return;
+
+  const costCheck = this.canSpendCost(actor, ability.costType || 'action', ability);
+  if (!costCheck.ok) {
+    this.log(costCheck.reason);
+    return;
   }
 
-  interactWithActor(id) {
+  if (ability.kind === 'heal' && target) {
+    const amt = rand(4, 9) + statMod(actor.stats.tech);
+    target.hp = clamp(target.hp + amt, 0, target.hpMax);
+    this.spendAbilityResources(actor, ability);
+    this.consumeAction(actor, ability.costType || 'action');
+    this.log(`${actor.name} uses ${ability.name} on ${target.name} for ${amt}.`);
+    this.advanceTime(1);
+    this.pendingAction = null;
+    this.renderAll();
+    return;
+  }
+  if (ability.kind === 'attack' && target) {
+    this.attack(actor, target, ability);
+    return;
+  }
+  if (ability.kind === 'buff' && target) {
+    if (!target.statuses.includes(ability.applyStatus)) target.statuses.push(ability.applyStatus);
+    this.spendAbilityResources(actor, ability);
+    this.consumeAction(actor, ability.costType || 'bonus');
+    this.log(`${actor.name} uses ${ability.name}. ${target.name} gains ${ability.applyStatus}.`);
+    this.advanceTime(1);
+    this.pendingAction = null;
+    this.renderAll();
+    return;
+  }
+
+  this.log('That technique needs a valid target.');
+}
+
+tryUseFirstAbilityAt(x, y) {
+  return this.tryUseAbilityAt(x, y, this.pendingActionAbilityId());
+}
+
+interactWithActor(id) {
     const actor = this.state.roster.find(a => a.id === id);
     if (!actor) return;
     this.state.selectedActorId = id;
@@ -606,34 +778,42 @@ export class GameEngine {
     };
   }
 
-  useItem(actor, idx) {
-    const entry = actor.inventory[idx];
-    const item = getById(this.data.items, entry.itemId);
-    if (!item) return;
-    if (item.type === 'consumable') {
-      if (item.effect?.heal) actor.hp = clamp(actor.hp + item.effect.heal, 0, actor.hpMax);
-      if (item.effect?.hunger) actor.survival.hunger = clamp(actor.survival.hunger + item.effect.hunger, 0, 100);
-      if (item.effect?.thirst) actor.survival.thirst = clamp(actor.survival.thirst + item.effect.thirst, 0, 100);
-      if (item.effect?.morale) actor.survival.morale = clamp(actor.survival.morale + item.effect.morale, 0, 100);
-      entry.qty -= 1;
-      this.log(`${actor.name} uses ${item.name}.`);
-      if (entry.qty <= 0) actor.inventory.splice(idx, 1);
-      this.renderAll();
-      return;
-    }
-    if (item.slot) {
-      actor.equipped[item.slot] = item.id;
-      this.log(`${actor.name} equips ${item.name}.`);
-      this.renderAll();
-      return;
-    }
-    if (item.type === 'container') {
-      this.log(`${item.name} is a named container hook. Nested container UI can be expanded later.`);
-      this.renameItemStack(actor, idx);
-    }
-  }
 
-  sendItemToCargo(actor, idx) {
+useItem(actor, idx) {
+  const actingActor = this.state.combat.active ? this.commandActor() : actor;
+  const entry = actor.inventory[idx];
+  const item = getById(this.data.items, entry.itemId);
+  if (!item) return;
+  if (item.type === 'consumable') {
+    const costCheck = this.canSpendCost(actingActor, 'action');
+    if (!costCheck.ok) {
+      this.log(costCheck.reason);
+      return;
+    }
+    if (item.effect?.heal) actor.hp = clamp(actor.hp + item.effect.heal, 0, actor.hpMax);
+    if (item.effect?.hunger) actor.survival.hunger = clamp(actor.survival.hunger + item.effect.hunger, 0, 100);
+    if (item.effect?.thirst) actor.survival.thirst = clamp(actor.survival.thirst + item.effect.thirst, 0, 100);
+    if (item.effect?.morale) actor.survival.morale = clamp(actor.survival.morale + item.effect.morale, 0, 100);
+    entry.qty -= 1;
+    if (this.state.combat.active) this.consumeAction(actingActor, 'action');
+    this.log(`${actor.name} uses ${item.name}.`);
+    if (entry.qty <= 0) actor.inventory.splice(idx, 1);
+    this.renderAll();
+    return;
+  }
+  if (item.slot) {
+    actor.equipped[item.slot] = item.id;
+    this.log(`${actor.name} equips ${item.name}.`);
+    this.renderAll();
+    return;
+  }
+  if (item.type === 'container') {
+    this.log(`${item.name} is a named container hook. Nested container UI can be expanded later.`);
+    this.renameItemStack(actor, idx);
+  }
+}
+
+sendItemToCargo(actor, idx) {
     const [entry] = actor.inventory.splice(idx, 1);
     if (!entry) return;
     this.state.ship.cargo.push(entry);
@@ -658,16 +838,23 @@ export class GameEngine {
     this.renderAll();
   }
 
-  toggleStealth(actorId) {
-    const actor = this.state.roster.find(a => a.id === actorId);
-    if (!actor) return;
-    const has = actor.statuses.includes('stealthed');
-    actor.statuses = has ? actor.statuses.filter(s => s !== 'stealthed') : [...actor.statuses, 'stealthed'];
-    this.log(`${actor.name} ${has ? 'leaves' : 'enters'} stealth.`);
-    this.renderAll();
-  }
 
-  attack(attacker, target, ability = null) {
+toggleStealth(actorId) {
+  const actor = this.state.roster.find(a => a.id === actorId) || this.commandActor();
+  if (!actor) return;
+  const costCheck = this.canSpendCost(actor, this.state.combat.active ? 'bonus' : 'free');
+  if (!costCheck.ok) {
+    this.log(costCheck.reason);
+    return;
+  }
+  const has = actor.statuses.includes('stealthed');
+  actor.statuses = has ? actor.statuses.filter(s => s !== 'stealthed') : [...actor.statuses, 'stealthed'];
+  if (this.state.combat.active) this.consumeAction(actor, 'bonus');
+  this.log(`${actor.name} ${has ? 'leaves' : 'enters'} stealth.`);
+  this.renderAll();
+}
+
+attack(attacker, target, ability = null) {
     if (!attacker || !target || attacker.dead || target.dead) return;
     if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== attacker.id) {
       this.log(`It is not ${attacker.name}'s turn.`);
@@ -707,9 +894,14 @@ export class GameEngine {
   }
 
   consumeAction(actor, type = 'action') {
-    if (!this.state.combat.active) return;
+    if (!this.state.combat.active || !actor) return;
     if (type === 'bonus') this.state.combat.bonusActed[actor.id] = true;
-    else this.state.combat.acted[actor.id] = true;
+    else if (type === 'reaction') {
+      this.state.combat.reactionSpent ??= {};
+      this.state.combat.reactionSpent[actor.id] = true;
+    } else if (type !== 'free' && type !== 'none' && type !== 'move') {
+      this.state.combat.acted[actor.id] = true;
+    }
   }
 
   handleDeathState(actor) {
@@ -728,6 +920,7 @@ export class GameEngine {
 
   startCombat() {
     const actors = this.state.roster.filter(a => a.mapId === this.state.mapId && !a.dead);
+    actors.forEach(actor => this.ensureActorResources(actor));
     this.state.combat.active = true;
     this.state.combat.round = 1;
     this.state.combat.turnOrder = [...actors].sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0)).map(a => a.id);
@@ -735,6 +928,7 @@ export class GameEngine {
     this.state.combat.movementLeft = Object.fromEntries(actors.map(a => [a.id, a.moveRange]));
     this.state.combat.acted = {};
     this.state.combat.bonusActed = {};
+    this.state.combat.reactionSpent = {};
     this.state.selectedActorId = this.state.combat.turnOrder[0];
     this.log('Combat begins.');
     this.renderAll();
@@ -754,33 +948,50 @@ export class GameEngine {
     this.startCombat();
   }
 
-  endTurn() {
-    if (!this.state.combat.active) return;
-    this.state.combat.currentTurnIndex++;
-    if (this.state.combat.currentTurnIndex >= this.state.combat.turnOrder.length) {
-      this.state.combat.currentTurnIndex = 0;
-      this.state.combat.round++;
-      this.state.combat.acted = {};
-      this.state.combat.bonusActed = {};
-      this.state.combat.movementLeft = Object.fromEntries(this.state.combat.turnOrder
-        .map(id => this.state.roster.find(a => a.id === id))
-        .filter(Boolean).map(a => [a.id, a.moveRange]));
-      this.applyRoundEffects();
-      this.log(`Round ${this.state.combat.round}.`);
-    }
-    const nextId = this.state.combat.turnOrder[this.state.combat.currentTurnIndex];
-    this.state.selectedActorId = nextId;
-    this.pendingAction = null;
-    const next = this.state.roster.find(a => a.id === nextId);
-    if (next) this.centerOnActor(next);
-    if (next && next.ai !== 'player' && !this.state.party.includes(next.id)) {
-      this.runAITurn(next);
-      return this.endTurn();
-    }
+
+endTurn() {
+  if (!this.state.combat.active) return;
+
+  this.state.combat.turnOrder = this.state.combat.turnOrder.filter(id => {
+    const actor = this.state.roster.find(a => a.id === id);
+    return actor && !actor.dead && actor.mapId === this.state.mapId;
+  });
+  if (!this.state.combat.turnOrder.length) {
+    this.state.combat.active = false;
     this.renderAll();
+    return;
   }
 
-  runAITurn(actor) {
+  this.state.combat.currentTurnIndex++;
+  if (this.state.combat.currentTurnIndex >= this.state.combat.turnOrder.length) {
+    this.state.combat.currentTurnIndex = 0;
+    this.state.combat.round++;
+    this.state.combat.acted = {};
+    this.state.combat.bonusActed = {};
+    this.state.combat.reactionSpent = {};
+    this.state.combat.movementLeft = Object.fromEntries(this.state.combat.turnOrder
+      .map(id => this.state.roster.find(a => a.id === id))
+      .filter(Boolean).map(a => [a.id, a.moveRange]));
+    this.applyRoundEffects();
+    this.log(`Round ${this.state.combat.round}.`);
+    if (!this.state.combat.active) {
+      this.renderAll();
+      return;
+    }
+  }
+  const nextId = this.state.combat.turnOrder[this.state.combat.currentTurnIndex];
+  this.state.selectedActorId = nextId;
+  this.pendingAction = null;
+  const next = this.state.roster.find(a => a.id === nextId);
+  if (next) this.centerOnActor(next);
+  if (next && next.ai !== 'player' && !this.state.party.includes(next.id)) {
+    this.runAITurn(next);
+    return this.endTurn();
+  }
+  this.renderAll();
+}
+
+runAITurn(actor) {
     const partyActors = this.state.party.map(id => this.state.roster.find(a => a.id === id)).filter(a => a && !a.dead);
     if (!partyActors.length) return;
     const target = partyActors.sort((a,b) => distance(actor,a)-distance(actor,b))[0];
@@ -852,6 +1063,7 @@ export class GameEngine {
     this.state.party.forEach(id => {
       const actor = this.state.roster.find(a => a.id === id);
       if (!actor) return;
+      this.ensureActorResources(actor);
       actor.hp = actor.hpMax;
       actor.shield = actor.shieldMax;
       actor.downed = false;
@@ -860,6 +1072,12 @@ export class GameEngine {
       actor.survival.thirst = clamp(actor.survival.thirst + 35, 0, 100);
       actor.survival.fatigue = clamp(actor.survival.fatigue + 60, 0, 100);
       actor.survival.morale = clamp(actor.survival.morale + 12, 0, 100);
+      Object.values(actor.powerPools || {}).forEach(pool => {
+        if ((pool.recharge || 'longRest') === 'longRest') pool.current = pool.max;
+      });
+      Object.values(actor.abilityUses || {}).forEach(entry => {
+        if ((entry.recharge || 'longRest') === 'longRest') entry.current = entry.max;
+      });
     });
     this.advanceTime(8 * 60);
     this.log('The crew takes a long rest.');

@@ -75,6 +75,13 @@
       "mainhand": "focus_shard",
       "armor": "weave_wrap",
       "implant": "psi_mesh"
+    },
+    "powerPools": {
+      "flux": {
+        "label": "Flux Cells",
+        "max": 2,
+        "recharge": "longRest"
+      }
     }
   },
   {
@@ -152,6 +159,13 @@
       "mainhand": "arc_tool",
       "armor": "salvage_rig",
       "utility": "repair_kit"
+    },
+    "powerPools": {
+      "gadget": {
+        "label": "Gadget Charges",
+        "max": 2,
+        "recharge": "longRest"
+      }
     }
   }
 ]

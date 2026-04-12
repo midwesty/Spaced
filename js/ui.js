@@ -178,25 +178,56 @@ export function renderResources(state) {
   });
 }
 
+
 export function renderActionBar(state, data, api) {
   const root = $('#actionBar');
   root.innerHTML = '';
-  const actor = state.roster.find(a => a.id === state.selectedActorId);
+  const selectedActor = state.roster.find(a => a.id === state.selectedActorId);
+  const currentTurnActor = state.combat.active
+    ? state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex])
+    : null;
+  const actor = currentTurnActor || selectedActor;
   if (!actor) return;
 
+  const actionUsed = !!state.combat.acted?.[actor.id];
+  const bonusUsed = !!state.combat.bonusActed?.[actor.id];
+  const reactionUsed = !!state.combat.reactionSpent?.[actor.id];
+  const movementLeft = state.combat.active
+    ? (state.combat.movementLeft[actor.id] ?? actor.moveRange ?? 0)
+    : (actor.moveRange ?? actor.movement ?? 0);
+  const pendingType = typeof state.ui.pendingAction === 'string'
+    ? state.ui.pendingAction
+    : state.ui.pendingAction?.type || null;
+  const pendingAbilityId = typeof state.ui.pendingAction === 'object'
+    ? state.ui.pendingAction?.abilityId || null
+    : null;
+
+  const turnInfo = state.combat.active
+    ? `<strong>Turn:</strong> ${actor.name} · <strong>Move:</strong> ${movementLeft} · <strong>Action:</strong> ${actionUsed ? 'Spent' : 'Ready'} · <strong>Bonus:</strong> ${bonusUsed ? 'Spent' : 'Ready'} · <strong>Reaction:</strong> ${reactionUsed ? 'Spent' : 'Ready'}`
+    : `<strong>Selected:</strong> ${actor.name}`;
+  root.appendChild(createEl('div', { class: 'turn-chip' }, turnInfo));
+
   if (state.combat.active) {
-    const currentTurnActor = state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex]);
-    const movementLeft = state.combat.movementLeft[currentTurnActor?.id] ?? currentTurnActor?.moveRange ?? 0;
-    const turnInfo = createEl('div', { class: 'turn-chip' }, `<strong>Turn:</strong> ${currentTurnActor?.name || '—'} · <strong>Move:</strong> ${movementLeft}`);
-    root.appendChild(turnInfo);
-  } else {
-    root.appendChild(createEl('div', { class: 'turn-chip' }, `<strong>Selected:</strong> ${actor.name}`));
+    const roster = createEl('div', { class: 'combat-roster' });
+    state.combat.turnOrder.forEach(id => {
+      const unit = state.roster.find(a => a.id === id);
+      if (!unit) return;
+      const chip = createEl('button', {
+        class: `combatant-chip ${unit.role} ${unit.dead ? 'dead' : ''} ${unit.id === actor.id ? 'current' : ''}`,
+        onclick: () => {
+          state.selectedActorId = unit.id;
+          api.centerOnActor(unit);
+          api.renderAll();
+        }
+      }, `${unit.name} <span>${Math.max(0, unit.hp)}/${unit.hpMax}</span>`);
+      roster.appendChild(chip);
+    });
+    root.appendChild(roster);
   }
 
   const actions = [
     ['Move', () => api.setPendingAction('move')],
     ['Attack', () => api.setPendingAction('attack')],
-    ['Ability', () => api.setPendingAction('ability')],
     ['Stealth', () => api.toggleStealth(actor.id)],
     ['Use Item', () => api.openPanel('inventoryPanel')],
     ['Talk', () => api.setPendingAction('talk')],
@@ -204,13 +235,48 @@ export function renderActionBar(state, data, api) {
     ['Rest', () => api.longRest()]
   ];
   actions.forEach(([label, fn]) => {
-    const active = state.pendingAction === label.toLowerCase();
-    const btn = createEl('button', { class: `action-chip ${active ? 'active' : ''}`, onclick: fn }, label);
+    const key = label.toLowerCase().replace(/ item/, '');
+    const btn = createEl('button', { class: `action-chip ${pendingType === key ? 'active' : ''}`, onclick: fn }, label);
+    if (state.combat.active) {
+      if (label === 'Attack' && actionUsed) btn.disabled = true;
+      if (label === 'Stealth' && bonusUsed) btn.disabled = true;
+      if (label === 'Rest') btn.disabled = true;
+      if (label === 'Talk' || label === 'Loot') btn.disabled = false;
+    }
     root.appendChild(btn);
   });
+
+  if (actor.abilities?.length) {
+    const abilityWrap = createEl('div', { class: 'ability-strip' });
+    actor.abilities.forEach(abilityId => {
+      const ability = getById(data.abilities, abilityId);
+      if (!ability) return;
+
+      let suffix = '';
+      if (ability.powerSource && actor.powerPools?.[ability.powerSource]) {
+        const pool = actor.powerPools[ability.powerSource];
+        suffix = ` · ${pool.label}: ${pool.current}/${pool.max}`;
+      } else if (ability.usesPerRest && actor.abilityUses?.[ability.id]) {
+        const entry = actor.abilityUses[ability.id];
+        suffix = ` · Uses: ${entry.current}/${entry.max}`;
+      }
+
+      const disabled = state.combat.active && (
+        (ability.costType === 'bonus' ? bonusUsed : ability.costType === 'reaction' ? reactionUsed : ability.costType === 'free' ? false : actionUsed)
+      );
+
+      const btn = createEl('button', {
+        class: `action-chip ability-chip ${pendingType === 'ability' && pendingAbilityId === ability.id ? 'active' : ''}`,
+        onclick: () => api.setPendingAction({ type: 'ability', abilityId: ability.id })
+      }, `${ability.name}${suffix}`);
+      if (disabled) btn.disabled = true;
+      abilityWrap.appendChild(btn);
+    });
+    root.appendChild(abilityWrap);
+  }
 }
 
-export function renderMessages(state) {
+export function renderMessages(state) {(state) {
   const root = $('#messageLog');
   root.innerHTML = state.ui.messages.slice(-14).map(m => `<div>${m}</div>`).join('');
   root.scrollTop = root.scrollHeight;

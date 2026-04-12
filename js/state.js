@@ -55,7 +55,8 @@ export function freshState(data) {
       currentTurnIndex: 0,
       movementLeft: {},
       acted: {},
-      bonusActed: {}
+      bonusActed: {},
+      reactionSpent: {}
     },
     ui: {
       openPanels: [],
@@ -99,6 +100,8 @@ export function createActorFromTemplate(template, data, overrides = {}) {
       mainhand: null, offhand: null, armor: null, utility: null, implant: null, pack: null
     }),
     abilities: deepClone(template.abilities || []),
+    powerPools: deepClone(template.powerPools || cls?.powerPools || {}),
+    abilityUses: deepClone(template.abilityUses || {}),
     affinity: template.affinity || 0,
     romance: { locked: false, active: false, stage: 0 },
     survival: deepClone(template.survival || {

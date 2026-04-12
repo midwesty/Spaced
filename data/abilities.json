@@ -24,7 +24,10 @@
     "attackBonus": 1,
     "costType": "action",
     "applyStatus": "irradiated",
-    "description": "A focused micro-singularity spike tears across the field."
+    "description": "A focused micro-singularity spike tears across the field.",
+    "powerSource": "flux",
+    "slotCost": 1,
+    "recharge": "longRest"
   },
   {
     "id": "phase_veil",
@@ -32,7 +35,10 @@
     "kind": "buff",
     "applyStatus": "stealthed",
     "costType": "bonus",
-    "description": "Briefly phase out of normal visibility."
+    "description": "Briefly phase out of normal visibility.",
+    "powerSource": "flux",
+    "slotCost": 1,
+    "recharge": "longRest"
   },
   {
     "id": "jet_lunge",
@@ -56,7 +62,10 @@
     "name": "Repair Burst",
     "kind": "heal",
     "costType": "action",
-    "description": "Patch wounds, armor seals, and shield conduits with a directed repair cloud."
+    "description": "Patch wounds, armor seals, and shield conduits with a directed repair cloud.",
+    "powerSource": "gadget",
+    "slotCost": 1,
+    "recharge": "longRest"
   },
   {
     "id": "shock_dart",
@@ -66,7 +75,10 @@
     "attackBonus": 2,
     "costType": "action",
     "applyStatus": "staggered",
-    "description": "A compact dart that shocks muscles and circuitry."
+    "description": "A compact dart that shocks muscles and circuitry.",
+    "powerSource": "gadget",
+    "slotCost": 1,
+    "recharge": "longRest"
   },
   {
     "id": "push_past_pain",
