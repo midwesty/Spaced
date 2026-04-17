@@ -1,8 +1,9 @@
 import { $, $$, clamp, createEl, formatTime, getById } from './utils.js';
 
-function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 10 } = {}) {
+function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 8 } = {}) {
   let timer = null;
   let startX = 0, startY = 0;
+  let fired = false;
 
   const clear = () => {
     if (timer) clearTimeout(timer);
@@ -11,11 +12,12 @@ function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 10 } 
 
   el.addEventListener('pointerdown', (e) => {
     if (e.button != null && e.button !== 0) return;
-    startX = e.clientX;
-    startY = e.clientY;
+    startX = e.clientX; startY = e.clientY;
+    fired = false;
     clear();
     timer = setTimeout(() => {
       timer = null;
+      fired = true;
       onLongPress(e);
     }, threshold);
   });
@@ -24,6 +26,11 @@ function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 10 } 
     if (!timer) return;
     if (Math.abs(e.clientX - startX) > moveTolerance || Math.abs(e.clientY - startY) > moveTolerance) clear();
   });
+
+  // Suppress click that fires after a long-press
+  el.addEventListener('click', (e) => {
+    if (fired) { e.stopPropagation(); fired = false; }
+  }, true);
 
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => el.addEventListener(type, clear));
 }
@@ -145,17 +152,20 @@ export function renderMap(state, data, api) {
   }
 
   const actorsHere = state.roster.filter(a => a.mapId === state.mapId);
+  const roleIcon = { player: '★', ally: '◉', enemy: '✕', neutral: '◆' };
   actorsHere.forEach(actor => {
     const ent = createEl('div', { class: `entity ${actor.role} ${actor.downed ? 'down' : ''} ${state.selectedActorId === actor.id ? 'selected' : ''} ${actor.statuses.includes('stealthed') ? 'stealthed' : ''}` });
     ent.style.left = `${actor.x * size}px`;
-    ent.style.top = `${actor.y * size}px`;
-    ent.innerHTML = `<span>${actor.name.split(' ').map(w => w[0]).slice(0,2).join('')}</span><div class="bubble">${actor.name}</div>`;
+    ent.style.top  = `${actor.y * size}px`;
+    const icon = roleIcon[actor.role] || actor.name.split(' ').map(w => w[0]).slice(0,2).join('');
+    ent.innerHTML = `<span class="icon">${icon}</span><div class="bubble">${actor.name}</div>`;
+    ent.addEventListener('pointerdown', (e) => e.stopPropagation());
     ent.addEventListener('click', (e) => { e.stopPropagation(); api.handleActorPrimary(actor.id, e); });
     bindLongPress(ent, (e) => {
       e.stopPropagation();
       api.handleActorLongPress(actor.id, e.clientX, e.clientY);
     });
-    ent.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); });
+    ent.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); api.showActorContext(actor.id, e.clientX, e.clientY); });
     entityLayer.appendChild(ent);
   });
 }
@@ -489,7 +499,7 @@ export function renderDialogue(state, data, api, nodeId, speakerActor) {
     <div class="card">
       <div class="dialogue-speaker">${speaker}</div>
       <div class="small">${portrait ? `Voice: ${speakerActor.voice || 'placeholder'}` : 'Audio hook ready for future voice files.'}</div>
-      <p>${node.text}</p>
+      <div class="dialogue-npc-line">${node.text}</div>
     </div>
   `;
   (node.choices || []).forEach(choice => {
@@ -497,7 +507,11 @@ export function renderDialogue(state, data, api, nodeId, speakerActor) {
     const btn = createEl('button', { class: `choice ${result.pass ? 'check-pass' : choice.check ? 'check-fail' : ''}` },
       `${choice.label}${choice.check ? ` [${choice.check.stat.toUpperCase()} DC ${choice.check.dc}]` : ''}${result.passText ? ` — ${result.passText}` : result.failText ? ` — ${result.failText}` : ''}`);
     btn.disabled = choice.check && !result.pass && choice.failTarget == null;
-    btn.addEventListener('click', () => api.resolveDialogueChoice(choice, result, speakerActor));
+    btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      api.resolveDialogueChoice(choice, result, speakerActor);
+    });
     root.appendChild(btn);
   });
 }

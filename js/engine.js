@@ -7,7 +7,7 @@ export class GameEngine {
     this.data = data;
     this.state = loadState() || freshState(data);
     this.pendingAction = null;
-    this.drag = { active: false, pointerId: null, lastX: 0, lastY: 0 };
+    this.drag = { active: false, pending: false, pointerId: null, lastX: 0, lastY: 0, startX: 0, startY: 0 };
     this.pinch = { active: false, startDistance: 0, startZoom: 1 };
     this.viewport = $('#mapViewport');
     this.api = this.buildApi();
@@ -164,23 +164,37 @@ bindShellUI() {
     if (actor) this.centerOnActor(actor);
   });
   $('#endTurnBtn').addEventListener('click', () => this.endTurn());
+  let _ctxDismissX = 0, _ctxDismissY = 0;
   document.addEventListener('pointerdown', (e) => {
-    if (!e.target.closest('#contextMenu')) $('#contextMenu').classList.add('hidden');
+    _ctxDismissX = e.clientX; _ctxDismissY = e.clientY;
+  });
+  document.addEventListener('pointerup', (e) => {
+    const moved = Math.hypot(e.clientX - _ctxDismissX, e.clientY - _ctxDismissY);
+    if (moved < 8 && !e.target.closest('#contextMenu')) {
+      $('#contextMenu').classList.add('hidden');
+    }
   });
 
   const wrap = this.viewport.parentElement;
 
   wrap.addEventListener('pointerdown', (e) => {
     if (this.pinch.active) return;
-    if (e.target.closest('.entity') || e.target.closest('.tile') || e.target.closest('.panel') || e.target.closest('#mapControls')) return;
-    this.drag.active = true;
+    if (e.target.closest('.entity') || e.target.closest('.tile') || e.target.closest('.panel') || e.target.closest('#mapControls') || e.target.closest('#contextMenu')) return;
+    this.drag.active = false; // don't activate until moved
+    this.drag.pending = true;
     this.drag.pointerId = e.pointerId;
     this.drag.lastX = e.clientX;
     this.drag.lastY = e.clientY;
+    this.drag.startX = e.clientX;
+    this.drag.startY = e.clientY;
     wrap.setPointerCapture(e.pointerId);
   });
   wrap.addEventListener('pointermove', (e) => {
-    if (!this.drag.active || this.drag.pointerId !== e.pointerId || this.pinch.active) return;
+    if ((!this.drag.active && !this.drag.pending) || this.drag.pointerId !== e.pointerId || this.pinch.active) return;
+    const totalMoved = Math.hypot(e.clientX - this.drag.startX, e.clientY - this.drag.startY);
+    if (!this.drag.active && totalMoved < 6) return; // threshold before panning starts
+    this.drag.active = true;
+    this.drag.pending = false;
     const dx = e.clientX - this.drag.lastX;
     const dy = e.clientY - this.drag.lastY;
     this.drag.lastX = e.clientX;
@@ -190,7 +204,10 @@ bindShellUI() {
     this.applyViewportTransform();
   });
   wrap.addEventListener('pointerup', (e) => {
-    if (this.drag.pointerId === e.pointerId) this.drag.active = false;
+    if (this.drag.pointerId === e.pointerId) {
+      this.drag.active = false;
+      this.drag.pending = false;
+    }
   });
   wrap.addEventListener('pointercancel', () => {
     this.drag.active = false;
@@ -890,11 +907,22 @@ interactWithActor(id) {
     const menu = $('#contextMenu');
     menu.innerHTML = '';
     options.forEach(([label, fn]) => {
-      const btn = createEl('button', { onclick: () => { fn(); menu.classList.add('hidden'); } }, label);
+      const btn = createEl('button', {}, label);
+      btn.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.add('hidden');
+        fn();
+      });
       menu.appendChild(btn);
     });
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
+    // Keep menu inside viewport
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const menuW = 200, menuH = options.length * 44;
+    const safeX = Math.min(x, vw - menuW - 8);
+    const safeY = Math.min(y, vh - menuH - 8);
+    menu.style.left = `${Math.max(8, safeX)}px`;
+    menu.style.top  = `${Math.max(8, safeY)}px`;
     menu.classList.remove('hidden');
   }
 
