@@ -63,6 +63,11 @@ export class GameEngine {
       resolveDialogueChoice: (choice, result, actor) => this.resolveDialogueChoice(choice, result, actor),
       toggleGroupFollow: () => this.toggleGroupFollow(),
       toggleGroupStealth: () => this.toggleGroupStealth(),
+      longRest: () => this.longRest(),
+      isTileRevealed: (x, y) => this.isTileRevealed(x, y),
+      shipRest: () => this.shipRest(),
+      convertScrapToFuel: () => this.convertScrapToFuel(),
+      openCargo: () => this.openPanel('inventoryPanel'),
     };
   }
 
@@ -92,6 +97,7 @@ export class GameEngine {
     this.data.quests.forEach(q => this.state.quests[q.id] = { stage: 0, complete: false, failed: false });
     this.state.partyControl.leaderId = hero.id;
     this.state.visitedMaps = Array.from(new Set([...(this.state.visitedMaps || []), this.state.mapId]));
+    this.revealFog();
     this.log('Campaign initialized.');
     saveState(this.state);
   }
@@ -342,17 +348,16 @@ populateCreator() {
     const wrap = this.viewport?.parentElement;
     const map = this.currentMap();
     if (!wrap || !map) return;
+    // Only auto-fit on forced calls (initial load, map change) — never during gameplay
+    if (!force) return;
     const tileSize = this.data.config.map.tileSize;
     const mapWidth = map.width * tileSize;
     const mapHeight = map.height * tileSize;
     const availableWidth = Math.max(220, wrap.clientWidth - 24);
-    const availableHeight = Math.max(220, wrap.clientHeight - 24);
+    const availableHeight = Math.max(220, wrap.clientHeight - 200);
     const fitZoom = Math.min(1, availableWidth / mapWidth, availableHeight / mapHeight);
-    const targetZoom = clamp(fitZoom, 0.22, 2.2);
-    if (force || window.innerWidth <= 920 || this.state.zoom > targetZoom) {
-      this.state.zoom = targetZoom;
-      this.applyViewportTransform();
-    }
+    this.state.zoom = clamp(fitZoom, 0.18, 2.2);
+    this.applyViewportTransform();
   }
 
   actorKey(actor) {
@@ -573,7 +578,7 @@ populateCreator() {
     renderJournal(this.state, this.data);
     renderInventory(this.state, this.data, this.api);
     renderCrew(this.state, this.data);
-    renderShip(this.state);
+    renderShip(this.state, this.data, this.api);
     renderSectorMap(this.state, this.data, this.api);
     renderAdmin(this.state, this.data, this.api);
     renderCodex();
@@ -604,46 +609,85 @@ populateCreator() {
     const actor = this.state.roster.find(a => a.id === id);
     const selected = this.selectedActor();
     if (!actor) return;
-
     const actionType = this.pendingActionType();
 
+    // If a pending action mode is active, resolve it
     if (actionType === 'attack') {
       const commandActor = this.commandActor();
       if (!commandActor || commandActor.id === actor.id) return this.log('Choose another target.');
       this.tryAttackAt(actor.x, actor.y);
       return;
     }
-    if (actionType === 'talk') {
-      this.tryTalkAt(actor.x, actor.y);
-      return;
-    }
-    if (actionType === 'ability') {
-      this.tryUseAbilityAt(actor.x, actor.y, this.pendingActionAbilityId());
-      return;
-    }
-    if (actionType === 'loot') {
-      this.tryLootAt(actor.x, actor.y);
+    if (actionType === 'talk')    return this.tryTalkAt(actor.x, actor.y);
+    if (actionType === 'ability') return this.tryUseAbilityAt(actor.x, actor.y, this.pendingActionAbilityId());
+    if (actionType === 'loot')    return this.tryLootAt(actor.x, actor.y);
+
+    // Clicking your own party member — select them
+    if (this.state.party.includes(actor.id)) {
+      this.selectActor(actor.id);
       return;
     }
 
-    if (selected?.id === actor.id) {
-      this.interactWithActor(actor.id);
-      return;
-    }
+    // Clicking an NPC/enemy — show what you can do
+    const commander = this.commandActor();
+    const inRange = commander ? this.isInRange(commander, actor.x, actor.y, 5) : false;
+    const options = [];
+    if (inRange && actor.dialogueId) options.push(['Talk', () => this.interactWithActor(id)]);
+    if (inRange) options.push(['Inspect', () => this.inspectActor(actor)]);
+    if (this.state.combat.active && inRange) options.push(['Attack', () => this.attack(commander, actor)]);
+    if (inRange && actor.role === 'neutral') options.push(['Pickpocket', () => this.tryPickpocket(actor)]);
+    if (actor.role === 'ally' && inRange) options.push(['Recruit', () => this.tryRecruit(actor)]);
+    if (!inRange) options.push(['Too far — move closer', () => this.log(`Move within 5 tiles of ${actor.name}.`)]);
 
-    this.selectActor(actor.id);
+    if (options.length > 0) {
+      const px = e?.clientX ?? window.innerWidth / 2;
+      const py = e?.clientY ?? window.innerHeight / 2;
+      this.showContextMenu(px, py, options);
+    }
   }
 
-  handleTileClick(x, y) {
+  handleTileClick(x, y, e) {
     const actor = this.commandActor();
     if (!actor || actor.dead) return;
     const actionType = this.pendingActionType();
+
+    // If there's a pending action mode, resolve it directly
     if (actionType === 'attack') return this.tryAttackAt(x, y);
-    if (actionType === 'talk') return this.tryTalkAt(x, y);
-    if (actionType === 'loot') return this.tryLootAt(x, y);
+    if (actionType === 'talk')   return this.tryTalkAt(x, y);
+    if (actionType === 'loot')   return this.tryLootAt(x, y);
     if (actionType === 'ability') return this.tryUseAbilityAt(x, y, this.pendingActionAbilityId());
-    if (actionType === 'move') return this.moveActorToward(actor, x, y);
-    return this.moveActorToward(actor, x, y);
+    if (actionType === 'move')   return this.moveActorToward(actor, x, y);
+
+    // No pending action — check what's on the tile and show options
+    const tile = this.currentMap().tiles[y]?.[x];
+    if (!tile) return;
+    const actorOnTile = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y);
+    const inRange = this.isInRange(actor, x, y, 5);
+    const options = [];
+
+    if (actorOnTile && actorOnTile.id !== actor.id) {
+      if (inRange && actorOnTile.dialogueId) options.push(['Talk', () => this.interactWithActor(actorOnTile.id)]);
+      if (inRange) options.push(['Inspect', () => { this.inspectActor(actorOnTile); }]);
+      if (this.state.combat.active && inRange) options.push(['Attack', () => this.attack(actor, actorOnTile)]);
+      if (inRange) options.push(['Pickpocket', () => this.tryPickpocket(actorOnTile)]);
+    } else {
+      if (tile.loot && inRange) options.push(['Loot', () => this.inspectTile(x, y)]);
+      if (tile.interact && inRange) options.push(['Interact', () => this.inspectTile(x, y)]);
+      if (!tile.blocked) options.push(['Move Here', () => this.moveActorToward(actor, x, y)]);
+      if (tile.loot && !inRange) options.push([`Loot (move closer)`, () => this.log('Move closer to loot this.')]);
+      if (tile.interact && !inRange) options.push([`Interact (move closer)`, () => this.log('Move closer to interact.')]);
+    }
+
+    if (options.length === 1 && options[0][0] === 'Move Here') {
+      // Pure movement tile — just move, no menu needed
+      this.moveActorToward(actor, x, y);
+      return;
+    }
+    if (options.length > 0) {
+      this.showContextMenu(e.clientX, e.clientY, options);
+    } else {
+      this.moveActorToward(actor, x, y);
+    }
   }
 
   handleTileContext(x, y, e) {
@@ -676,9 +720,19 @@ populateCreator() {
       return;
     }
     actor.x = x; actor.y = y;
+    // Animate entity sliding to new position
+    const size = this.data.config.map.tileSize;
+    const entEl = document.querySelector(`#entityLayer .entity[data-actorid="${actor.id}"]`);
+    if (entEl) {
+      entEl.style.transition = 'left 0.16s ease, top 0.16s ease';
+      entEl.style.left = `${x * size}px`;
+      entEl.style.top  = `${y * size}px`;
+      setTimeout(() => { if (entEl) entEl.style.transition = ''; }, 200);
+    }
     if (this.state.combat.active) this.state.combat.movementLeft[actor.id] = Math.max(0, (this.state.combat.movementLeft[actor.id] ?? actor.moveRange) - dist);
     this.resolveTileTriggers(actor, x, y);
     if (!this.state.combat.active && this.state.party.includes(actor.id) && this.state.partyControl.follow) this.syncPartyFormation(actor);
+    if (this.state.party.includes(actor.id)) this.revealFog();
     this.advanceTime(this.state.combat.active ? 1 : 6);
     this.pendingAction = null;
     this.centerOnActor(actor);
@@ -718,6 +772,7 @@ populateCreator() {
         }
       });
       this.log(tile.transition.text || `Area entered: ${getById(this.data.maps, this.state.mapId)?.name || this.state.mapId}.`);
+      requestAnimationFrame(() => this.fitViewportToScreen(true));
     }
     if (tile.discoveryFlag) this.state.flags[tile.discoveryFlag] = true;
     if (tile.loot) this.inspectTile(x, y);
@@ -748,13 +803,17 @@ populateCreator() {
   tryTalkAt(x, y) {
     const actor = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y && a.dialogueId);
     if (!actor) return this.log('No one there wants to talk.');
+    const commander = this.commandActor();
+    if (commander && !this.isInRange(commander, x, y, 5)) return this.log(`${actor.name} is too far away. Move closer.`);
     this.pendingAction = null;
     this.interactWithActor(actor.id);
   }
 
   tryLootAt(x, y) {
-    const tile = this.currentMap().tiles[y][x];
-    if (!tile.loot) return this.log('Nothing obvious to loot.');
+    const tile = this.currentMap().tiles[y]?.[x];
+    if (!tile?.loot) return this.log('Nothing obvious to loot.');
+    const commander = this.commandActor();
+    if (commander && !this.isInRange(commander, x, y, 5)) return this.log('Too far away to reach that. Move closer.');
     this.pendingAction = null;
     this.inspectTile(x, y);
   }
@@ -1106,6 +1165,7 @@ attack(attacker, target, ability = null) {
     const hit = crit || (roll.total + attackBonus) >= target.armor;
     this.log(`${attacker.name} attacks ${target.name}: ${roll.rolls[0]} + ${attackBonus} vs AC ${target.armor}.`);
     attacker.statuses = attacker.statuses.filter(s => s !== 'stealthed');
+    this.flashActor(attacker.id, 'entity-acting', 400);
     if (hit) {
       const baseExpr = ability?.damage || weapon?.damage || '1d6';
       const dmgRoll = rollDice(baseExpr);
@@ -1117,6 +1177,7 @@ attack(attacker, target, ability = null) {
         dmg -= absorbed;
       }
       if (dmg > 0) target.hp -= dmg;
+      this.flashActor(target.id, 'entity-hit', 500);
       this.log(`${target.name} takes ${Math.max(dmg,0)} damage${crit ? ' (CRIT)' : ''}.`);
       if (ability?.applyStatus && !target.statuses.includes(ability.applyStatus)) {
         target.statuses.push(ability.applyStatus);
@@ -1192,53 +1253,81 @@ attack(attacker, target, ability = null) {
 
   endTurn() {
     if (!this.state.combat.active) return;
+    // Clear any pending AI timers
+    clearTimeout(this.aiTurnTimer);
+    clearTimeout(this.aiEndTimer);
 
+    // Rebuild turn order — remove dead/absent actors
     this.state.combat.turnOrder = this.state.combat.turnOrder.filter(id => {
       const actor = this.state.roster.find(a => a.id === id);
       return actor && !actor.dead && actor.mapId === this.state.mapId;
     });
+
     if (!this.state.combat.turnOrder.length) {
-      this.state.combat.active = false;
-      this.renderAll();
+      this.endCombat();
       return;
     }
 
+    // Advance to next turn
     this.state.combat.currentTurnIndex++;
     if (this.state.combat.currentTurnIndex >= this.state.combat.turnOrder.length) {
+      // New round
       this.state.combat.currentTurnIndex = 0;
       this.state.combat.round++;
       this.state.combat.acted = {};
       this.state.combat.bonusActed = {};
       this.state.combat.reactionSpent = {};
-      this.state.combat.movementLeft = Object.fromEntries(this.state.combat.turnOrder
-        .map(id => this.state.roster.find(a => a.id === id))
-        .filter(Boolean).map(a => [a.id, a.moveRange]));
+      this.state.combat.movementLeft = Object.fromEntries(
+        this.state.combat.turnOrder
+          .map(id => this.state.roster.find(a => a.id === id))
+          .filter(Boolean)
+          .map(a => [a.id, a.moveRange])
+      );
       this.applyRoundEffects();
+      if (!this.state.combat.active) { this.renderAll(); return; }
       this.log(`Round ${this.state.combat.round}.`);
-      if (!this.state.combat.active) {
-        this.renderAll();
-        return;
-      }
     }
+
     const nextId = this.state.combat.turnOrder[this.state.combat.currentTurnIndex];
-    this.state.selectedActorId = nextId;
-    this.pendingAction = null;
     const next = this.state.roster.find(a => a.id === nextId);
-    if (next) this.centerOnActor(next);
-    if (next && next.ai !== 'player' && !this.state.party.includes(next.id)) {
-      this.state.combat.aiActingId = next.id;
-      this.renderAll();
-      clearTimeout(this.aiTurnTimer);
-      this.aiTurnTimer = setTimeout(() => {
-        this.runAITurn(next);
-        this.state.combat.aiActingId = null;
-        this.renderAll();
-        clearTimeout(this.aiEndTimer);
-        this.aiEndTimer = setTimeout(() => this.endTurn(), 380);
-      }, 500);
+
+    // Skip dead/missing actors silently
+    if (!next || next.dead) {
+      this.endTurn();
       return;
     }
+
+    this.state.selectedActorId = nextId;
+    this.pendingAction = null;
+    this.centerOnActor(next);
+
+    const isAI = next.ai !== 'player' && !this.state.party.includes(next.id);
+    if (isAI) {
+      // Highlight the AI actor, pause, run turn, pause, end
+      this.state.combat.aiActingId = nextId;
+      this.renderAll();
+      this.aiTurnTimer = setTimeout(() => {
+        if (!this.state.combat.active) return;
+        this.runAITurn(next);
+        this.renderAll();
+        this.aiEndTimer = setTimeout(() => {
+          this.state.combat.aiActingId = null;
+          if (this.state.combat.active) this.endTurn();
+          else this.renderAll();
+        }, 600);
+      }, 700);
+      return;
+    }
+
     this.state.combat.aiActingId = null;
+    this.renderAll();
+    this.log(`${next.name}'s turn.`);
+  }
+
+  endCombat() {
+    this.state.combat.active = false;
+    this.state.combat.aiActingId = null;
+    this.log('Combat ends.');
     this.renderAll();
   }
 
@@ -1273,8 +1362,8 @@ attack(attacker, target, ability = null) {
       return actor && !actor.dead;
     });
     if (!enemiesAlive || !partyAlive) {
-      this.state.combat.active = false;
-      this.log(!partyAlive ? 'Your party is wiped out.' : 'Combat ends.');
+      this.endCombat();
+      this.log(!partyAlive ? 'Your party is wiped out.' : 'All enemies defeated.');
     }
   }
 
@@ -1342,6 +1431,26 @@ attack(attacker, target, ability = null) {
     this.advanceTime(8 * 60);
     this.state.partyControl.squadStealth = false;
     this.log('The crew takes a long rest.');
+  }
+
+  shipRest() {
+    this.longRest();
+  }
+
+  convertScrapToFuel() {
+    const scrapCost = 5;
+    if (this.state.resources.scrap < scrapCost) {
+      this.log(`Not enough scrap. Need ${scrapCost} scrap per fuel unit.`);
+      return;
+    }
+    const canMake = Math.floor(this.state.resources.scrap / scrapCost);
+    const spaceLeft = this.state.ship.fuelCapacity - this.state.resources.fuel;
+    const making = Math.min(canMake, spaceLeft);
+    if (making <= 0) { this.log('Fuel tank is full.'); return; }
+    this.state.resources.scrap -= making * scrapCost;
+    this.state.resources.fuel = Math.min(this.state.resources.fuel + making, this.state.ship.fuelCapacity);
+    this.log(`Converted ${making * scrapCost} scrap into ${making} fuel.`);
+    this.renderAll();
   }
 
   tryRecruit(actor) {
@@ -1430,6 +1539,60 @@ attack(attacker, target, ability = null) {
         });
       }
     }
+  }
+
+  // Visually flash an entity element for combat feedback
+  flashActor(actorId, cssClass, durationMs = 500) {
+    const el = document.querySelector(`.entity[data-actor-id="${actorId}"]`);
+    if (!el) return;
+    el.classList.add(cssClass);
+    setTimeout(() => el.classList.remove(cssClass), durationMs);
+  }
+
+  // Animate actor moving tile-by-tile (CSS transition based)
+  async animateMove(actor, toX, toY) {
+    const size = this.data.config.map.tileSize;
+    const el = document.querySelector(`.entity[data-actor-id="${actor.id}"]`);
+    if (!el) return;
+    el.style.transition = 'left 0.18s ease, top 0.18s ease';
+    el.style.left = `${toX * size}px`;
+    el.style.top  = `${toY * size}px`;
+    return new Promise(r => setTimeout(r, 200));
+  }
+  revealFog() {
+    const mapId = this.state.mapId;
+    if (!this.state.fogRevealed) this.state.fogRevealed = {};
+    if (!this.state.fogRevealed[mapId]) this.state.fogRevealed[mapId] = {};
+    const map = this.currentMap();
+    if (!map) return;
+    const radius = 12;
+    // Use all party members for reveal
+    const revealers = this.state.party
+      .map(id => this.state.roster.find(a => a.id === id))
+      .filter(Boolean);
+    revealers.forEach(actor => {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (dx*dx + dy*dy > radius*radius) continue;
+          const tx = actor.x + dx, ty = actor.y + dy;
+          if (tx >= 0 && ty >= 0 && tx < map.width && ty < map.height) {
+            this.state.fogRevealed[mapId][`${tx},${ty}`] = true;
+          }
+        }
+      }
+    });
+  }
+
+  isTileRevealed(x, y) {
+    const mapId = this.state.mapId;
+    // Ship interior and wake_hold never fogged
+    if (mapId === 'wake_interior' || mapId === 'wake_hold') return true;
+    return !!(this.state.fogRevealed?.[mapId]?.[`${x},${y}`]);
+  }
+
+  // Check if actor is within interaction range of a tile (5 tiles)
+  isInRange(actor, x, y, range = 5) {
+    return distance(actor, { x, y }) <= range;
   }
 
   openDialogue(nodeId, actor) {

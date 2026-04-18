@@ -1,115 +1,143 @@
 import { $, $$, clamp, createEl, formatTime, getById } from './utils.js';
 
-function bindLongPress(el, onLongPress, { threshold = 450, moveTolerance = 8 } = {}) {
-  let timer = null;
-  let startX = 0, startY = 0;
-  let fired = false;
+// ─── PANEL DRAG ───────────────────────────────────────────────────────────────
+function initPanelDrag(panel) {
+  const header = panel.querySelector('.panel-header');
+  if (!header) return;
+  let dragging = false, startMoved = false, offX = 0, offY = 0, startX = 0, startY = 0;
 
-  const clear = () => {
-    if (timer) clearTimeout(timer);
-    timer = null;
-  };
-
-  el.addEventListener('pointerdown', (e) => {
-    if (e.button != null && e.button !== 0) return;
+  header.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
     startX = e.clientX; startY = e.clientY;
-    fired = false;
-    clear();
-    timer = setTimeout(() => {
-      timer = null;
-      fired = true;
-      onLongPress(e);
-    }, threshold);
+    const rect = panel.getBoundingClientRect();
+    offX = e.clientX - rect.left;
+    offY = e.clientY - rect.top;
+    startMoved = false;
+    dragging = true;
+    header.setPointerCapture(e.pointerId);
   });
 
-  el.addEventListener('pointermove', (e) => {
-    if (!timer) return;
-    if (Math.abs(e.clientX - startX) > moveTolerance || Math.abs(e.clientY - startY) > moveTolerance) clear();
+  header.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const moved = Math.hypot(e.clientX - startX, e.clientY - startY);
+    if (!startMoved && moved < 6) return;
+    startMoved = true;
+    panel.style.left      = `${clamp(e.clientX - offX, 4, window.innerWidth  - 60)}px`;
+    panel.style.top       = `${clamp(e.clientY - offY, 4, window.innerHeight - 40)}px`;
+    panel.style.right     = 'auto';
+    panel.style.transform = 'none';
   });
 
-  // Suppress click that fires after a long-press
-  el.addEventListener('click', (e) => {
-    if (fired) { e.stopPropagation(); fired = false; }
-  }, true);
-
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => el.addEventListener(type, clear));
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t =>
+    header.addEventListener(t, () => { dragging = false; startMoved = false; })
+  );
 }
 
-export function initPanels(state, api) {
-  $$('.panel').forEach((panel, idx) => {
-    panel.style.left = `${40 + idx * 18}px`;
-    panel.style.top = `${92 + idx * 10}px`;
-    const header = panel.querySelector('.panel-header');
-    const closeBtn = panel.querySelector('.close-btn');
-    const collapseBtn = panel.querySelector('.collapse-btn');
-    const stopHeaderButton = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    ['pointerdown', 'click'].forEach(type => {
-      closeBtn.addEventListener(type, stopHeaderButton);
-      collapseBtn.addEventListener(type, stopHeaderButton);
-    });
-    closeBtn.addEventListener('click', () => panel.classList.add('hidden'));
-    collapseBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
+function centerPanel(panel) {
+  const w = panel.offsetWidth  || 420;
+  const h = panel.offsetHeight || 300;
+  panel.style.left      = `${Math.max(4, (window.innerWidth  - w) / 2)}px`;
+  panel.style.top       = `${Math.max(4, (window.innerHeight - h) / 3)}px`;
+  panel.style.right     = 'auto';
+  panel.style.transform = 'none';
+}
 
-    let dragging = false, offX = 0, offY = 0;
-    header.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
-      dragging = true;
-      const rect = panel.getBoundingClientRect();
-      offX = e.clientX - rect.left;
-      offY = e.clientY - rect.top;
-      panel.setPointerCapture(e.pointerId);
+// ─── INIT PANELS ──────────────────────────────────────────────────────────────
+export function initPanels(state, api) {
+  $$('.panel').forEach(panel => {
+    const closeBtn    = panel.querySelector('.close-btn');
+    const collapseBtn = panel.querySelector('.collapse-btn');
+    [closeBtn, collapseBtn].forEach(btn => {
+      if (!btn) return;
+      ['pointerdown','pointerup','click'].forEach(t =>
+        btn.addEventListener(t, e => { e.stopPropagation(); e.preventDefault(); })
+      );
     });
-    header.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      panel.style.left = `${clamp(e.clientX - offX, 4, window.innerWidth - 150)}px`;
-      panel.style.top = `${clamp(e.clientY - offY, 4, window.innerHeight - 50)}px`;
-      panel.style.right = 'auto';
-      panel.style.transform = 'none';
-    });
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => header.addEventListener(type, () => dragging = false));
+    closeBtn?.addEventListener('click',    () => panel.classList.add('hidden'));
+    collapseBtn?.addEventListener('click', () => panel.classList.toggle('collapsed'));
+    initPanelDrag(panel);
   });
 
-  $$('[data-panel]').forEach(btn => btn.addEventListener('click', () => {
-    const panel = document.getElementById(btn.dataset.panel);
-    panel.classList.toggle('hidden');
-    panel.classList.remove('collapsed');
-  }));
+  $$('[data-panel]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById(btn.dataset.panel);
+      if (!panel) return;
+      const wasHidden = panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      panel.classList.remove('collapsed');
+      if (wasHidden) requestAnimationFrame(() => centerPanel(panel));
+    });
+  });
 
-  $('#openCodexBtn').addEventListener('click', () => {
-    $('#codexPanel').classList.remove('hidden');
+  $('#openCodexBtn')?.addEventListener('click', () => {
+    const p = $('#codexPanel');
+    p.classList.remove('hidden');
     $('#splash').classList.remove('active');
     $('#gameRoot').classList.add('active');
-    api.renderCodex();
+    renderCodex();
+    requestAnimationFrame(() => centerPanel(p));
   });
+
+  // Collapsible HUD bottom
+  const hudToggle = $('#hudToggleBtn');
+  if (hudToggle) {
+    hudToggle.addEventListener('click', () => {
+      const hud = $('#hudBottom');
+      hud.classList.toggle('hud-collapsed');
+      hudToggle.textContent = hud.classList.contains('hud-collapsed') ? '▲' : '▼';
+    });
+  }
 }
 
+// ─── TOP HUD ──────────────────────────────────────────────────────────────────
 export function renderTopHUD(state, data) {
-  $('#worldClock').textContent = formatTime(state.timeMinutes);
-  $('#locationName').textContent = currentMap(state, data)?.name || '—';
-  const currentTurnActor = state.combat.active
+  const clockEl    = $('#worldClock');
+  const locEl      = $('#locationName');
+  const modeEl     = $('#modeName');
+  const threatEl   = $('#threatName');
+  if (!clockEl) return;
+
+  clockEl.textContent  = formatTime(state.timeMinutes);
+  locEl.textContent    = currentMap(state, data)?.name || '—';
+
+  const turnActor = state.combat.active
     ? state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex])
     : null;
-  $('#modeName').textContent = state.combat.active ? `Combat · ${currentTurnActor?.name || '—'}` : 'Exploration';
-  $('#threatName').textContent = state.combat.active ? `Round ${state.combat.round}` : (currentMap(state, data)?.threat || 'Low');
+  modeEl.textContent  = state.combat.active ? `Combat · ${turnActor?.name || '—'}` : 'Exploration';
+  threatEl.textContent = state.combat.active
+    ? `Round ${state.combat.round}`
+    : (currentMap(state, data)?.threat || 'Low');
+
   document.body.classList.toggle('in-combat', !!state.combat.active);
 }
 
+// ─── PARTY STRIP ──────────────────────────────────────────────────────────────
 export function renderPartyStrip(state, data, api) {
   const root = $('#partyStrip');
+  if (!root) return;
   root.innerHTML = '';
   const party = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean);
   party.forEach(actor => {
-    const card = createEl('div', { class: `party-card ${state.selectedActorId === actor.id ? 'selected' : ''}` });
+    const hpPct   = Math.max(0, (actor.hp / actor.hpMax) * 100);
+    const hpColor = actor.downed ? '#555' : hpPct > 50 ? '#86dfa3' : hpPct > 25 ? '#ffcc6b' : '#ff6e6e';
+    const isAI    = state.combat.active && state.combat.aiActingId === actor.id;
+    const card = createEl('div', {
+      class: `party-card ${state.selectedActorId === actor.id ? 'selected' : ''} ${isAI ? 'ai-acting-card' : ''}`
+    });
     card.innerHTML = `
-      <div class="row"><strong>${actor.name}</strong><span class="small">${actor.classId}</span></div>
-      <div class="small">${actor.speciesId} · Lv ${actor.level} · Affinity ${actor.affinity ?? 0}</div>
-      <div class="bar"><div class="fill" style="width:${(actor.hp/actor.hpMax)*100}%;background:${actor.downed?'#555':'#ff6e6e'}"></div></div>
-      <div class="small">HP ${actor.hp}/${actor.hpMax} ${actor.dead ? '· DEAD' : actor.downed ? '· DOWN' : ''}</div>
-      <div class="bar"><div class="fill" style="width:${actor.survival.hunger}%;background:#ffcc6b"></div></div>
-      <div class="small">Hunger ${Math.round(actor.survival.hunger)} · Thirst ${Math.round(actor.survival.thirst)} · Morale ${Math.round(actor.survival.morale)}</div>
+      <div class="row">
+        <strong>${actor.name}</strong>
+        <span class="small">${actor.classId}${isAI ? ' ◉' : ''}</span>
+      </div>
+      <div class="small">${actor.speciesId} · Lv ${actor.level}</div>
+      <div class="bar"><div class="fill" style="width:${hpPct}%;background:${hpColor}"></div></div>
+      <div class="small">HP ${actor.hp}/${actor.hpMax}${actor.dead ? ' · DEAD' : actor.downed ? ' · DOWN' : ''}</div>
+      <div class="bar"><div class="fill" style="width:${actor.survival?.hunger ?? 0}%;background:#ffcc6b"></div></div>
+      <div class="small">
+        🍖${Math.round(actor.survival?.hunger ?? 0)}
+        💧${Math.round(actor.survival?.thirst ?? 0)}
+        ♥${Math.round(actor.survival?.morale ?? 0)}
+      </div>
     `;
     card.addEventListener('click', () => {
       state.selectedActorId = actor.id;
@@ -124,260 +152,267 @@ function currentMap(state, data) {
   return data.maps.find(m => m.id === state.mapId);
 }
 
+// ─── MAP RENDER ───────────────────────────────────────────────────────────────
 export function renderMap(state, data, api) {
-  const map = currentMap(state, data);
-  const tileLayer = $('#tileLayer');
+  const map         = currentMap(state, data);
+  const tileLayer   = $('#tileLayer');
   const entityLayer = $('#entityLayer');
-  tileLayer.innerHTML = '';
+  tileLayer.innerHTML   = '';
   entityLayer.innerHTML = '';
   if (!map) return;
+
   const size = data.config.map.tileSize;
   document.documentElement.style.setProperty('--tile', `${size}px`);
 
   for (let y = 0; y < map.height; y++) {
     for (let x = 0; x < map.width; x++) {
-      const t = map.tiles[y][x];
-      const tile = createEl('div', { class: `tile ${t.type} ${t.cover ? 'cover' : ''} ${t.interact ? 'interact' : ''} ${t.loot ? 'loot' : ''}` });
+      const t = map.tiles[y]?.[x];
+      if (!t) continue;
+      const revealed = api.isTileRevealed(x, y);
+
+      let cls = `tile ${t.type}`;
+      if (revealed) {
+        if (t.cover)    cls += ' cover';
+        if (t.loot)     cls += ' loot';
+        if (t.interact) cls += ' interact';
+      }
+      if (!revealed)    cls += ' fogged';
+
+      const tile = createEl('div', { class: cls });
       tile.style.left = `${x * size}px`;
-      tile.style.top = `${y * size}px`;
-      tile.style.width = `${size}px`;
-      tile.style.height = `${size}px`;
-      tile.dataset.x = x;
-      tile.dataset.y = y;
-      tile.addEventListener('click', (e) => api.handleTileClick(x, y, e));
-      bindLongPress(tile, (e) => api.handleTileContext(x, y, e));
-      tile.addEventListener('contextmenu', (e) => e.preventDefault());
+      tile.style.top  = `${y * size}px`;
+      tile.dataset.x  = x;
+      tile.dataset.y  = y;
+
+      if (revealed) {
+        tile.addEventListener('click', (e) => api.handleTileClick(x, y, e));
+        tile.addEventListener('contextmenu', (e) => { e.preventDefault(); api.handleTileContext(x, y, e); });
+      }
       tileLayer.appendChild(tile);
     }
   }
 
-  const actorsHere = state.roster.filter(a => a.mapId === state.mapId);
-  const roleIcon = { player: '★', ally: '◉', enemy: '✕', neutral: '◆' };
+  // Entities
+  const roleIcon   = { player: '★', ally: '◉', enemy: '✕', neutral: '◆' };
+  const actorsHere = state.roster.filter(a => a.mapId === state.mapId && !a.dead);
+
   actorsHere.forEach(actor => {
-    const ent = createEl('div', { class: `entity ${actor.role} ${actor.downed ? 'down' : ''} ${state.selectedActorId === actor.id ? 'selected' : ''} ${actor.statuses.includes('stealthed') ? 'stealthed' : ''}` });
+    const revealed = api.isTileRevealed(actor.x, actor.y);
+    if (!revealed && !state.party.includes(actor.id)) return;
+
+    const isAI      = state.combat.aiActingId === actor.id;
+    const isCurrent = state.combat.active &&
+      state.combat.turnOrder[state.combat.currentTurnIndex] === actor.id;
+
+    let cls = `entity ${actor.role}`;
+    if (actor.downed)                         cls += ' down';
+    if (state.selectedActorId === actor.id)   cls += ' selected';
+    if (actor.statuses.includes('stealthed')) cls += ' stealthed';
+    if (isAI)                                 cls += ' ai-acting';
+    if (isCurrent && !isAI)                   cls += ' current-turn';
+
+    const ent = createEl('div', { class: cls });
     ent.style.left = `${actor.x * size}px`;
     ent.style.top  = `${actor.y * size}px`;
-    const icon = roleIcon[actor.role] || actor.name.split(' ').map(w => w[0]).slice(0,2).join('');
+
+    const icon = roleIcon[actor.role] || actor.name.split(' ').map(w => w[0]).slice(0, 2).join('');
     ent.innerHTML = `<span class="icon">${icon}</span><div class="bubble">${actor.name}</div>`;
-    ent.addEventListener('pointerdown', (e) => e.stopPropagation());
-    ent.addEventListener('click', (e) => { e.stopPropagation(); api.handleActorPrimary(actor.id, e); });
-    bindLongPress(ent, (e) => {
-      e.stopPropagation();
-      api.handleActorLongPress(actor.id, e.clientX, e.clientY);
+
+    ent.addEventListener('pointerdown', e => e.stopPropagation());
+    ent.addEventListener('click', e => { e.stopPropagation(); api.handleActorPrimary(actor.id, e); });
+    ent.addEventListener('contextmenu', e => {
+      e.preventDefault(); e.stopPropagation();
+      api.showActorContext(actor.id, e.clientX, e.clientY);
     });
-    ent.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); api.showActorContext(actor.id, e.clientX, e.clientY); });
     entityLayer.appendChild(ent);
   });
 }
 
+// ─── RESOURCES ────────────────────────────────────────────────────────────────
 export function renderResources(state) {
-  const resourceBar = $('#resourceBar');
-  resourceBar.innerHTML = '';
-  const items = [
+  const bar = $('#resourceBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  [
     ['Credits', state.resources.credits],
-    ['Fuel', `${state.resources.fuel}/${state.ship.fuelCapacity}`],
+    ['Fuel',    `${state.resources.fuel}/${state.ship.fuelCapacity}`],
     ['Rations', state.resources.rations],
-    ['Water', state.resources.water],
-    ['Supplies', state.resources.shipSupplies],
-    ['Medgel', state.resources.medgel],
-    ['Scrap', state.resources.scrap]
-  ];
-  items.forEach(([label, val]) => {
-    const chip = createEl('div', { class: 'resource-chip' }, `<strong>${label}</strong>: ${val}`);
-    resourceBar.appendChild(chip);
+    ['Water',   state.resources.water],
+    ['Supplies',state.resources.shipSupplies],
+    ['Medgel',  state.resources.medgel],
+    ['Scrap',   state.resources.scrap],
+  ].forEach(([label, val]) => {
+    bar.appendChild(createEl('div', { class: 'resource-chip' },
+      `<span class="small">${label}</span><strong>${val}</strong>`));
   });
 }
 
-
+// ─── ACTION BAR ───────────────────────────────────────────────────────────────
 export function renderActionBar(state, data, api) {
-  const root = $('#actionBar');
-  root.innerHTML = '';
-  const selectedActor = state.roster.find(a => a.id === state.selectedActorId);
-  const currentTurnActor = state.combat.active
-    ? state.roster.find(a => a.id === state.combat.turnOrder[state.combat.currentTurnIndex])
-    : null;
-  const actor = currentTurnActor || selectedActor;
+  const bar = $('#actionBar');
+  if (!bar) return;
+  bar.innerHTML = '';
+
+  const actor = state.party
+    .map(id => state.roster.find(a => a.id === id))
+    .filter(Boolean)
+    .find(a => a.id === state.selectedActorId)
+    || state.roster.find(a => state.party.includes(a.id) && !a.dead);
+
   if (!actor) return;
 
-  const actionUsed = !!state.combat.acted?.[actor.id];
-  const bonusUsed = !!state.combat.bonusActed?.[actor.id];
-  const reactionUsed = !!state.combat.reactionSpent?.[actor.id];
-  const movementLeft = state.combat.active
-    ? (state.combat.movementLeft[actor.id] ?? actor.moveRange ?? 0)
-    : (actor.moveRange ?? actor.movement ?? 0);
-  const pendingType = typeof state.ui.pendingAction === 'string'
-    ? state.ui.pendingAction
-    : state.ui.pendingAction?.type || null;
-  const pendingAbilityId = typeof state.ui.pendingAction === 'object'
-    ? state.ui.pendingAction?.abilityId || null
-    : null;
-
-  const turnInfo = state.combat.active
-    ? `<strong>Turn:</strong> ${actor.name} · <strong>Move:</strong> ${movementLeft} · <strong>Action:</strong> ${actionUsed ? 'Spent' : 'Ready'} · <strong>Bonus:</strong> ${bonusUsed ? 'Spent' : 'Ready'} · <strong>Reaction:</strong> ${reactionUsed ? 'Spent' : 'Ready'}`
-    : `<strong>Selected:</strong> ${actor.name}`;
-  root.appendChild(createEl('div', { class: 'turn-chip' }, turnInfo));
-
   if (state.combat.active) {
-    const roster = createEl('div', { class: 'combat-roster' });
-    state.combat.turnOrder.forEach(id => {
-      const unit = state.roster.find(a => a.id === id);
-      if (!unit) return;
-      const chip = createEl('button', {
-        class: `combatant-chip ${unit.role} ${unit.dead ? 'dead' : ''} ${unit.id === actor.id ? 'current' : ''}`,
-        onclick: () => {
-          state.selectedActorId = unit.id;
-          api.centerOnActor(unit);
-          api.renderAll();
-        }
-      }, `${unit.name} <span>${Math.max(0, unit.hp)}/${unit.hpMax}</span>`);
-      roster.appendChild(chip);
+    const strip = createEl('div', { class: 'combat-roster' });
+    state.combat.turnOrder.forEach((id, idx) => {
+      const a = state.roster.find(x => x.id === id);
+      if (!a) return;
+      const isCurrent = idx === state.combat.currentTurnIndex;
+      const isAI      = state.combat.aiActingId === id;
+      strip.appendChild(createEl('div', {
+        class: `combatant-chip ${a.role} ${isCurrent ? 'current' : ''} ${a.dead ? 'dead' : ''} ${isAI ? 'ai-acting' : ''}`
+      }, `${a.name} ${a.hp}/${a.hpMax}`));
     });
-    root.appendChild(roster);
-  }
-
-  const actions = [
-    ['Move', () => api.setPendingAction('move')],
-    ['Attack', () => api.setPendingAction('attack')],
-    ['Stealth', () => api.toggleStealth(actor.id)],
-    ['Use Item', () => api.openPanel('inventoryPanel')],
-    ['Talk', () => api.setPendingAction('talk')],
-    ['Loot', () => api.setPendingAction('loot')],
-    [state.partyControl?.follow ? 'Ungroup' : 'Group Up', () => api.toggleGroupFollow?.()],
-    [state.partyControl?.squadStealth ? 'Squad Unstealth' : 'Squad Stealth', () => api.toggleGroupStealth?.()],
-    ['Rest', () => api.longRest()]
-  ];
-  actions.forEach(([label, fn]) => {
-    const key = label.toLowerCase().replace(/ item/, '').replace(/ /g, '_');
-    const btn = createEl('button', { class: `action-chip ${pendingType === key ? 'active' : ''}`, onclick: fn }, label);
-    if (state.combat.active) {
-      if (label === 'Attack' && actionUsed) btn.disabled = true;
-      if (label === 'Stealth' && bonusUsed) btn.disabled = true;
-      if (label.startsWith('Squad') || label.includes('Group')) btn.disabled = false;
-      if (label === 'Rest') btn.disabled = true;
-      if (label === 'Talk' || label === 'Loot') btn.disabled = false;
-    }
-    root.appendChild(btn);
-  });
-
-  if (!state.combat.active) {
-    const squadInfo = createEl('div', { class: 'turn-chip' }, `<strong>Party:</strong> ${state.partyControl?.follow ? 'Linked' : 'Unlinked'} · <strong>Squad Stealth:</strong> ${state.partyControl?.squadStealth ? 'On' : 'Off'}`);
-    root.appendChild(squadInfo);
-  } else if (state.combat.aiActingId) {
-    const acting = state.roster.find(a => a.id === state.combat.aiActingId);
-    if (acting) root.appendChild(createEl('div', { class: 'turn-chip' }, `<strong>Enemy Turn:</strong> ${acting.name} is acting...`));
+    bar.appendChild(strip);
   }
 
   if (actor.abilities?.length) {
-    const abilityWrap = createEl('div', { class: 'ability-strip' });
-    actor.abilities.forEach(abilityId => {
-      const ability = getById(data.abilities, abilityId);
+    const strip = createEl('div', { class: 'ability-strip' });
+    actor.abilities.forEach(id => {
+      const ability = getById(data.abilities, id);
       if (!ability) return;
-
-      let suffix = '';
-      if (ability.powerSource && actor.powerPools?.[ability.powerSource]) {
-        const pool = actor.powerPools[ability.powerSource];
-        suffix = ` · ${pool.label}: ${pool.current}/${pool.max}`;
-      } else if (ability.usesPerRest && actor.abilityUses?.[ability.id]) {
-        const entry = actor.abilityUses[ability.id];
-        suffix = ` · Uses: ${entry.current}/${entry.max}`;
-      }
-
-      const disabled = state.combat.active && (
-        (ability.costType === 'bonus' ? bonusUsed : ability.costType === 'reaction' ? reactionUsed : ability.costType === 'free' ? false : actionUsed)
-      );
-
-      const btn = createEl('button', {
-        class: `action-chip ability-chip ${pendingType === 'ability' && pendingAbilityId === ability.id ? 'active' : ''}`,
-        onclick: () => api.setPendingAction({ type: 'ability', abilityId: ability.id })
-      }, `${ability.name}${suffix}`);
-      if (disabled) btn.disabled = true;
-      abilityWrap.appendChild(btn);
+      const btn = createEl('button', { class: 'ability-chip' },
+        `${ability.name} [${ability.costType || 'action'}]`);
+      btn.addEventListener('click', () => api.setPendingAction({ type: 'ability', abilityId: id }));
+      strip.appendChild(btn);
     });
-    root.appendChild(abilityWrap);
+    bar.appendChild(strip);
+  }
+
+  if (!state.combat.active) {
+    const row = createEl('div', { class: 'row-wrap' });
+    const mk = (label, action) => {
+      const b = createEl('button', {}, label);
+      b.addEventListener('click', () => api.setPendingAction(action));
+      return b;
+    };
+    row.append(mk('Move', 'move'), mk('Talk', 'talk'), mk('Loot', 'loot'));
+    const restBtn = createEl('button', { class: 'secondary' }, 'Rest');
+    restBtn.addEventListener('click', () => api.longRest());
+    row.appendChild(restBtn);
+    const followBtn = createEl('button', { class: 'secondary' },
+      `Follow: ${state.partyControl.follow ? 'ON' : 'OFF'}`);
+    followBtn.addEventListener('click', () => api.toggleGroupFollow());
+    row.appendChild(followBtn);
+    bar.appendChild(row);
   }
 }
 
+// ─── MESSAGES ─────────────────────────────────────────────────────────────────
 export function renderMessages(state) {
-  const root = $('#messageLog');
-  root.innerHTML = state.ui.messages.slice(-14).map(m => `<div>${m}</div>`).join('');
-  root.scrollTop = root.scrollHeight;
+  const log = $('#messageLog');
+  if (!log) return;
+  log.innerHTML = '';
+  const msgs = (state.ui.messages || []).slice(-12);
+  msgs.forEach((msg, i) => {
+    const div = createEl('div', {}, msg);
+    if (i === msgs.length - 1) div.style.color = 'var(--text)';
+    log.appendChild(div);
+  });
+  log.scrollTop = log.scrollHeight;
 }
 
 export function pushMessage(state, msg) {
+  state.ui.messages = state.ui.messages || [];
   state.ui.messages.push(msg);
+  if (state.ui.messages.length > 60) state.ui.messages.shift();
 }
 
+// ─── JOURNAL ──────────────────────────────────────────────────────────────────
 export function renderJournal(state, data) {
   const root = $('#journalBody');
+  if (!root) return;
   root.innerHTML = '';
-  const quests = data.quests;
-  quests.forEach(q => {
-    const progress = state.quests[q.id] || { stage: 0, complete: false, failed: false };
-    const stage = q.stages[progress.stage] || q.stages[q.stages.length - 1];
-    const card = createEl('div', { class: 'card' }, `
-      <strong>${q.name}</strong>
-      <div class="small">${q.category}</div>
-      <p>${q.description}</p>
-      <div><span class="badge">${progress.complete ? 'Complete' : progress.failed ? 'Failed' : 'Active'}</span>
-      <span class="badge">Stage ${progress.stage + 1}/${q.stages.length}</span></div>
-      <p><strong>Current Objective:</strong> ${stage?.text || 'No current objective.'}</p>
-    `);
-    root.appendChild(card);
+  let any = false;
+  data.quests.forEach(quest => {
+    const prog = state.quests[quest.id];
+    if (!prog) return;
+    any = true;
+    const stage = quest.stages[prog.stage];
+    root.appendChild(createEl('div', { class: 'card' }, `
+      <strong>${quest.name}</strong>
+      <div class="small">${quest.category}${prog.complete ? ' · ✓ Complete' : prog.failed ? ' · ✗ Failed' : ''}</div>
+      <p>${stage?.text || quest.description}</p>
+    `));
   });
+  if (!any) root.innerHTML = '<div class="card"><div class="small">No quests yet.</div></div>';
 }
 
+// ─── INVENTORY ────────────────────────────────────────────────────────────────
 export function renderInventory(state, data, api) {
   const root = $('#inventoryBody');
-  const actor = state.roster.find(a => a.id === state.selectedActorId) || state.roster.find(a => state.party.includes(a.id));
-  if (!actor) return;
+  if (!root) return;
   root.innerHTML = '';
-  const containerItems = actor.inventory;
-  const actorCol = createEl('div', { class: 'card' });
-  actorCol.innerHTML = `<strong>${actor.name}</strong><div class="small">${actor.classId} · ${actor.speciesId}</div>`;
 
-  const equip = createEl('div', { class: 'grid-2' });
-  Object.entries(actor.equipped).forEach(([slot, itemId]) => {
-    const item = itemId ? getById(data.items, itemId) : null;
-    const slotEl = createEl('div', { class: 'equip-slot', dataset: { slot } }, `<div><strong>${slot}</strong><div class="small">${item?.name || 'Empty'}</div></div>`);
-    slotEl.addEventListener('click', () => api.inspectEquipmentSlot(actor.id, slot));
-    equip.appendChild(slotEl);
+  const actor = state.party
+    .map(id => state.roster.find(a => a.id === id))
+    .filter(Boolean)
+    .find(a => a.id === state.selectedActorId)
+    || state.roster.find(a => state.party.includes(a.id) && !a.dead);
+
+  if (!actor) {
+    root.innerHTML = '<div class="card"><div class="small">No party member selected.</div></div>';
+    return;
+  }
+
+  // Equipment
+  const actorCol = createEl('div', { class: 'card' },
+    `<strong>${actor.name}</strong><div class="small">${actor.classId}</div>`);
+  ['mainhand','offhand','armor','utility','implant','pack'].forEach(slot => {
+    const item = getById(data.items, actor.equipped?.[slot]);
+    const div = createEl('div', { class: 'equip-slot' },
+      `<div class="small">${slot}</div><div>${item?.name || 'Empty'}</div>`);
+    div.addEventListener('click', () => api.inspectEquipmentSlot(actor.id, slot));
+    actorCol.appendChild(div);
   });
-  actorCol.appendChild(equip);
 
-  const bagCol = createEl('div', { class: 'card' }, `<strong>Inventory</strong><div class="small">Drag, drop, inspect, use, send, rename containers, stash cargo.</div>`);
-  const grid = createEl('div', { class: 'slot-grid' });
-  containerItems.forEach((entry, idx) => {
+  // Bag
+  const bagCol = createEl('div', { class: 'card' }, '<strong>Carried Items</strong>');
+  const grid   = createEl('div', { class: 'slot-grid' });
+  (actor.inventory || []).forEach((entry, idx) => {
     const item = getById(data.items, entry.itemId);
-    const itemEl = createEl('div', { class: 'slot', dataset: { idx } });
-    const inner = createEl('div', { class: 'item', draggable: 'true' }, `<strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div>`);
-    inner.addEventListener('dragstart', ev => ev.dataTransfer.setData('text/plain', JSON.stringify({ ownerId: actor.id, idx })));
-    inner.addEventListener('click', (e) => api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY));
-    bindLongPress(inner, (e) => api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY, true));
-    inner.addEventListener('contextmenu', (e) => e.preventDefault());
-    itemEl.appendChild(inner);
-    itemEl.addEventListener('dragover', e => e.preventDefault());
-    itemEl.addEventListener('drop', e => api.handleInventoryDrop(e, actor.id, idx));
-    grid.appendChild(itemEl);
-  });
-  for (let i = containerItems.length; i < 20; i++) {
-    const slot = createEl('div', { class: 'slot', dataset: { idx: i } }, `<span class="small">Empty</span>`);
+    const slot = createEl('div', { class: 'slot', dataset: { idx } });
+    slot.innerHTML = `<div class="item"><strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'item'} x${entry.qty}</div></div>`;
+    slot.addEventListener('click', e => api.inspectInventoryItem(actor.id, idx, e.clientX, e.clientY));
+    slot.setAttribute('draggable', 'true');
+    slot.addEventListener('dragstart', e =>
+      e.dataTransfer.setData('text/plain', JSON.stringify({ actorId: actor.id, idx })));
     slot.addEventListener('dragover', e => e.preventDefault());
-    slot.addEventListener('drop', e => api.handleInventoryDrop(e, actor.id, i));
+    slot.addEventListener('drop',     e => api.handleInventoryDrop(e, actor.id, idx));
+    grid.appendChild(slot);
+  });
+  for (let i = (actor.inventory || []).length; i < 20; i++) {
+    const slot = createEl('div', { class: 'slot', dataset: { idx: i } },
+      '<span class="small">Empty</span>');
+    slot.addEventListener('dragover', e => e.preventDefault());
+    slot.addEventListener('drop',     e => api.handleInventoryDrop(e, actor.id, i));
     grid.appendChild(slot);
   }
   bagCol.appendChild(grid);
 
-  const stashCol = createEl('div', { class: 'card' }, `<strong>Ship Cargo</strong><div class="small">Shared storage aboard the ship.</div>`);
+  // Cargo
+  const stashCol  = createEl('div', { class: 'card' },
+    '<strong>Ship Cargo</strong><div class="small">Shared storage.</div>');
   const stashGrid = createEl('div', { class: 'slot-grid' });
-  state.ship.cargo.forEach((entry, idx) => {
+  (state.ship.cargo || []).forEach((entry, idx) => {
     const item = getById(data.items, entry.itemId);
     const slot = createEl('div', { class: 'slot' });
     slot.innerHTML = `<div class="item"><strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div></div>`;
     slot.addEventListener('click', () => api.inspectCargoItem(idx));
-    bindLongPress(slot, () => api.inspectCargoItem(idx));
     stashGrid.appendChild(slot);
   });
-  for (let i = state.ship.cargo.length; i < 15; i++) stashGrid.appendChild(createEl('div', { class: 'slot' }, `<span class="small">Empty</span>`));
+  for (let i = (state.ship.cargo || []).length; i < 15; i++) {
+    stashGrid.appendChild(createEl('div', { class: 'slot' }, '<span class="small">Empty</span>'));
+  }
   stashCol.appendChild(stashGrid);
 
   const wrap = createEl('div', { class: 'inventory-columns' });
@@ -385,68 +420,91 @@ export function renderInventory(state, data, api) {
   root.appendChild(wrap);
 }
 
+// ─── CREW ─────────────────────────────────────────────────────────────────────
 export function renderCrew(state, data) {
   const root = $('#crewBody');
+  if (!root) return;
   root.innerHTML = '';
-  state.roster.filter(a => a.role === 'ally' || state.party.includes(a.id)).forEach(actor => {
-    const card = createEl('div', { class: 'card' }, `
-      <strong>${actor.name}</strong>
-      <div class="small">${actor.classId} · ${actor.speciesId}</div>
-      <p>${actor.bio || 'No biography yet.'}</p>
-      <div class="statline"><span>Affinity</span><strong>${actor.affinity ?? 0}</strong></div>
-      <div class="statline"><span>Romance Stage</span><strong>${actor.romance?.stage || 0}</strong></div>
-      <div class="statline"><span>Morale</span><strong>${Math.round(actor.survival.morale)}</strong></div>
-      <div class="small">${actor.romance?.active ? 'Romance active.' : 'Not currently in romance.'}</div>
-    `);
-    root.appendChild(card);
-  });
+  state.roster
+    .filter(a => a.role === 'ally' || state.party.includes(a.id))
+    .forEach(actor => {
+      root.appendChild(createEl('div', { class: 'card' }, `
+        <strong>${actor.name}</strong>
+        <div class="small">${actor.classId} · ${actor.speciesId}</div>
+        <p>${actor.bio || 'No biography yet.'}</p>
+        <div class="statline"><span>Affinity</span><strong>${actor.affinity ?? 0}</strong></div>
+        <div class="statline"><span>Romance</span><strong>Stage ${actor.romance?.stage || 0}</strong></div>
+        <div class="statline"><span>Morale</span><strong>${Math.round(actor.survival?.morale ?? 0)}</strong></div>
+        <div class="small">${actor.romance?.active ? 'Romance active.' : ''}</div>
+      `));
+    });
 }
 
-export function renderShip(state) {
+// ─── SHIP ─────────────────────────────────────────────────────────────────────
+export function renderShip(state, api) {
   const root = $('#shipBody');
+  if (!root) return;
+  const scrap     = state.resources.scrap;
+  const canMake   = Math.floor(scrap / 5);
+  const fuelSpace = state.ship.fuelCapacity - state.resources.fuel;
   root.innerHTML = `
     <div class="card">
       <strong>${state.ship.name}</strong>
-      <div class="small">Mobile home base, safe-rest zone, cargo hold, companion hub, and travel interface.</div>
-      <div class="statline"><span>Hull Integrity</span><strong>${state.ship.hull}%</strong></div>
-      <div class="statline"><span>Fuel</span><strong>${state.resources.fuel}/${state.ship.fuelCapacity}</strong></div>
+      <div class="small">Mobile base, safe-rest zone, cargo hold, companion hub, travel interface.</div>
+      <div class="statline"><span>Hull</span><strong>${state.ship.hull}%</strong></div>
+      <div class="statline"><span>Fuel</span><strong>${state.resources.fuel} / ${state.ship.fuelCapacity}</strong></div>
+      <div class="statline"><span>Scrap</span><strong>${scrap} (can convert ${Math.min(canMake, fuelSpace)} → fuel)</strong></div>
       <div class="statline"><span>Modules</span><strong>${state.ship.installedModules.join(', ')}</strong></div>
-      <div class="statline"><span>Notes</span><strong>${state.ship.notes.length}</strong></div>
     </div>
     <div class="card">
-      <strong>Deck Layout</strong>
-      <p>Bridge · Sensor Nook · Bunks · Galley · Cargo Bay · Smuggler Hold · Medbay · Engine Room</p>
-      <div class="row-wrap">
+      <strong>Actions</strong>
+      <div class="small">Ship Rest uses 1 ration + 1 water. Restores full HP and abilities for all party.</div>
+      <div class="row-wrap" style="margin-top:8px">
         <button id="restOnShipBtn">Ship Rest</button>
-        <button id="refuelShipBtn">Convert Scrap to Fuel</button>
+        <button id="refuelShipBtn" ${fuelSpace <= 0 || canMake <= 0 ? 'disabled' : ''}>Scrap → Fuel (5:1)</button>
         <button id="openCargoBtn">Open Cargo</button>
       </div>
     </div>
+    <div class="card">
+      <strong>Ship Log</strong>
+      ${(state.ship.notes || []).map(n => `<p class="small">${n}</p>`).join('') || '<p class="small">No entries.</p>'}
+    </div>
   `;
+  $('#restOnShipBtn').addEventListener('click', () => api?.shipRest?.());
+  $('#refuelShipBtn').addEventListener('click', () => api?.convertScrapToFuel?.());
+  $('#openCargoBtn').addEventListener('click', () => {
+    const inv = $('#inventoryPanel');
+    if (inv) { inv.classList.remove('hidden'); requestAnimationFrame(() => centerPanel(inv)); }
+  });
 }
 
+// ─── SECTOR MAP ───────────────────────────────────────────────────────────────
 export function renderSectorMap(state, data, api) {
   const root = $('#sectorMapBody');
+  if (!root) return;
   root.innerHTML = '';
   data.config.sectorNodes.forEach(node => {
+    const isCurrent = state.currentSectorNode === node.id;
     const card = createEl('div', { class: 'travel-node' }, `
       <strong>${node.name}</strong>
-      <div class="small">${node.type} · Danger ${node.danger}</div>
+      <div class="small">${node.type} · Danger: ${node.danger}</div>
       <p>${node.description}</p>
       <div class="statline"><span>Fuel Cost</span><strong>${node.fuelCost}</strong></div>
       <div class="row-wrap"></div>
     `);
-    const row = card.querySelector('.row-wrap');
-    const btn = createEl('button', {}, state.currentSectorNode === node.id ? 'Current Location' : 'Travel Here');
-    if (state.currentSectorNode === node.id) btn.disabled = true;
+    const btn = createEl('button', {},
+      isCurrent ? 'Current Location' : `Travel (${node.fuelCost} fuel)`);
+    btn.disabled = isCurrent || (!state.flags.shipOwned && node.fuelCost > 0);
     btn.addEventListener('click', () => api.travelToSector(node.id));
-    row.appendChild(btn);
+    card.querySelector('.row-wrap').appendChild(btn);
     root.appendChild(card);
   });
 }
 
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
 export function renderAdmin(state, data, api) {
   const root = $('#adminBody');
+  if (!root) return;
   root.innerHTML = `
     <div class="card">
       <strong>Testing Controls</strong>
@@ -455,60 +513,68 @@ export function renderAdmin(state, data, api) {
         <button id="adminFeedBtn">Feed Party</button>
         <button id="adminAddFuelBtn">+Fuel</button>
         <button id="adminAddCreditsBtn">+Credits</button>
+        <button id="adminAddScrapBtn">+Scrap</button>
         <button id="adminToggleCombatBtn">Toggle Combat</button>
         <button id="adminSpawnEnemyBtn">Spawn Enemy</button>
         <button id="adminAdvanceHourBtn">+1 Hour</button>
-        <button id="adminQuestAdvanceBtn">Advance Main Quest</button>
+        <button id="adminQuestAdvanceBtn">Advance Quest</button>
       </div>
     </div>
     <div class="card">
       <strong>Party Size</strong>
-      <div class="small">Current max: ${state.partyMax}. Default is ${data.config.party.defaultMax}. Admin maximum is ${data.config.party.adminMax}.</div>
+      <div class="small">Max: ${state.partyMax} / Admin max: ${data.config.party.adminMax}</div>
       <input id="partySizeInput" type="range" min="1" max="${data.config.party.adminMax}" value="${state.partyMax}" />
       <div id="partySizeLabel">${state.partyMax}</div>
+    </div>
+    <div class="card">
+      <strong>Fog Revealed</strong>
+      <div class="small">${Object.values(state.fogRevealed || {}).reduce((n, m) => n + Object.keys(m).length, 0)} tiles</div>
     </div>
     <div class="card">
       <strong>Flags</strong>
       <div class="small">${Object.entries(state.flags).map(([k,v]) => `${k}: ${v}`).join('<br>')}</div>
     </div>
   `;
-  $('#adminHealBtn').onclick = api.adminHealParty;
-  $('#adminFeedBtn').onclick = api.adminFeedParty;
-  $('#adminAddFuelBtn').onclick = () => api.adjustResource('fuel', 2);
-  $('#adminAddCreditsBtn').onclick = () => api.adjustResource('credits', 250);
+  $('#adminHealBtn').onclick        = api.adminHealParty;
+  $('#adminFeedBtn').onclick        = api.adminFeedParty;
+  $('#adminAddFuelBtn').onclick     = () => api.adjustResource('fuel', 4);
+  $('#adminAddCreditsBtn').onclick  = () => api.adjustResource('credits', 250);
+  $('#adminAddScrapBtn').onclick    = () => api.adjustResource('scrap', 25);
   $('#adminToggleCombatBtn').onclick = api.adminToggleCombat;
-  $('#adminSpawnEnemyBtn').onclick = api.adminSpawnEnemy;
+  $('#adminSpawnEnemyBtn').onclick  = api.adminSpawnEnemy;
   $('#adminAdvanceHourBtn').onclick = () => api.advanceTime(60);
   $('#adminQuestAdvanceBtn').onclick = api.adminAdvanceMainQuest;
-  $('#partySizeInput').oninput = (e) => {
+  $('#partySizeInput').oninput = e => {
     state.partyMax = Number(e.target.value);
     $('#partySizeLabel').textContent = state.partyMax;
   };
 }
 
+// ─── DIALOGUE ─────────────────────────────────────────────────────────────────
 export function renderDialogue(state, data, api, nodeId, speakerActor) {
   const root = $('#dialogueBody');
   const node = data.dialogue.nodes[nodeId];
   if (!node) {
-    root.innerHTML = '<div class="card">Dialogue node missing.</div>';
+    root.innerHTML = `<div class="card"><em class="small">Missing dialogue node: ${nodeId}</em></div>`;
     return;
   }
   const speaker = speakerActor?.name || node.speaker || 'Unknown';
-  const portrait = speakerActor?.portrait || '';
   root.innerHTML = `
     <div class="card">
       <div class="dialogue-speaker">${speaker}</div>
-      <div class="small">${portrait ? `Voice: ${speakerActor.voice || 'placeholder'}` : 'Audio hook ready for future voice files.'}</div>
       <div class="dialogue-npc-line">${node.text}</div>
     </div>
   `;
   (node.choices || []).forEach(choice => {
     const result = api.evaluateChoice(choice);
-    const btn = createEl('button', { class: `choice ${result.pass ? 'check-pass' : choice.check ? 'check-fail' : ''}` },
-      `${choice.label}${choice.check ? ` [${choice.check.stat.toUpperCase()} DC ${choice.check.dc}]` : ''}${result.passText ? ` — ${result.passText}` : result.failText ? ` — ${result.failText}` : ''}`);
-    btn.disabled = choice.check && !result.pass && choice.failTarget == null;
-    btn.addEventListener('pointerdown', (e) => e.stopPropagation());
-    btn.addEventListener('click', (e) => {
+    let label = choice.label;
+    if (choice.check) label += ` [${choice.check.stat.toUpperCase()} DC ${choice.check.dc}]`;
+    const btn = createEl('button', {
+      class: `choice ${result.pass ? 'check-pass' : choice.check ? 'check-fail' : ''}`
+    }, label);
+    btn.disabled = !!(choice.check && !result.pass && !choice.failTarget);
+    btn.addEventListener('pointerdown', e => e.stopPropagation());
+    btn.addEventListener('click', e => {
       e.stopPropagation();
       api.resolveDialogueChoice(choice, result, speakerActor);
     });
@@ -516,23 +582,33 @@ export function renderDialogue(state, data, api, nodeId, speakerActor) {
   });
 }
 
+// ─── INSPECT ──────────────────────────────────────────────────────────────────
 export function renderInspect(state, data, html) {
-  $('#inspectBody').innerHTML = html;
+  const root = $('#inspectBody');
+  if (root) root.innerHTML = html;
 }
 
+// ─── CODEX ────────────────────────────────────────────────────────────────────
 export function renderCodex() {
-  $('#codexBody').innerHTML = `
+  const root = $('#codexBody');
+  if (!root) return;
+  root.innerHTML = `
     <div class="card">
-      <strong>What this MVP already supports</strong>
-      <p>Exploration on a top-down map, same-map turn-based combat, party control, drag/drop inventory, equipment, status effects, survival pressures, dialogue trees, skill checks, ship hub, sector travel, quests, faction reputation, crime, stealth, companion affinity, romance hooks, admin/testing tools, save/load, and JSON-driven content.</p>
+      <strong>How to play Spaced</strong>
+      <p>Click or tap any tile to see available actions — move, talk, loot, or interact. You must be within 5 tiles to talk or loot. During combat, use the action buttons then End Turn.</p>
     </div>
     <div class="card">
-      <strong>How to expand it later</strong>
-      <p>Add or edit content in the data folder: maps, dialogue, items, companions, quests, classes, species, statuses, and encounters. Swap placeholder files in the assets folders without changing code as long as you keep names consistent.</p>
+      <strong>Controls</strong>
+      <p><strong>PC:</strong> Left-click tiles or entities to interact. Right-click for the action menu. Scroll to zoom. Drag empty space to pan.</p>
+      <p><strong>Mobile:</strong> Tap anything to interact. Pinch to zoom. Drag empty map to pan. Use the ▼ button to collapse the bottom bar for more map space.</p>
     </div>
     <div class="card">
-      <strong>Important note</strong>
-      <p>Because this uses fetch to load JSON, run it from a local web server rather than opening the HTML file directly. For example: <code>python -m http.server 8000</code> from the project folder.</p>
+      <strong>What's in this build</strong>
+      <p>Exploration, turn-based combat, party control, inventory, equipment, survival, dialogue trees with skill checks, ship hub, sector travel, quests, faction reputation, stealth, companion affinity, romance, fog of war, and save/load.</p>
+    </div>
+    <div class="card">
+      <strong>Running locally</strong>
+      <p>Use a local server, not file://. Example: <code>python -m http.server 8000</code></p>
     </div>
   `;
 }

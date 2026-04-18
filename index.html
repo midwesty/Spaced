@@ -3,36 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Starfall Directive MVP</title>
+  <title>Spaced</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SPLASH SCREEN
+  ═══════════════════════════════════════════════════════ -->
   <div id="splash" class="screen active">
     <div class="splash-panel">
-      <h1>STARFALL DIRECTIVE</h1>
-      <p class="tagline">A gritty top-down sci-fi party RPG with survival, ship life, tactical combat, dialogue choices, stealth, crime, and galaxy travel.</p>
+      <h1>SPACED</h1>
+      <p class="tagline">A gritty top-down sci-fi party RPG. Survival, ship life, tactical combat, dialogue choices, stealth, crime, and a galaxy worth of bad decisions.</p>
       <div class="splash-actions">
         <button id="newGameBtn">New Campaign</button>
         <button id="continueBtn">Continue</button>
-        <button id="openCodexBtn">About / How To Play</button>
+        <button id="openCodexBtn">How To Play</button>
       </div>
       <details class="howto">
-        <summary>Starter controls</summary>
+        <summary>Quick controls</summary>
         <div>
-          <p><strong>PC:</strong> left click to move/interact/select, right click on entities/items for quick actions, middle mouse or hold space + drag to pan camera, wheel to zoom.</p>
-          <p><strong>Phone:</strong> tap to move/interact/select, long press for quick actions, drag empty map space to pan, pinch or buttons to zoom.</p>
-          <p><strong>Combat:</strong> same map as exploration. Use action buttons, movement grid, inventories, and abilities.</p>
+          <p><strong>PC & Mobile:</strong> Tap or click any tile or entity to see available actions — move, talk, loot, or interact. You must be within 5 tiles to talk or loot. Use the ▼ button to collapse the bottom bar on small screens.</p>
+          <p><strong>Zoom & pan:</strong> Scroll wheel to zoom. Pinch on touch. Drag empty map space to pan. Use + / − buttons in the top bar.</p>
+          <p><strong>Combat:</strong> Click enemies to attack. Use ability buttons in the bottom bar. Press End Turn when done.</p>
         </div>
       </details>
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════
+       CHARACTER CREATOR
+  ═══════════════════════════════════════════════════════ -->
   <div id="creatorScreen" class="screen">
     <div class="creator-layout">
       <section class="creator-panel">
         <h2>Create Commander</h2>
         <div class="creator-grid">
-          <label>Name <input id="ccName" value="Rook Vey" /></label>
+          <label>Name
+            <input id="ccName" value="Rook Vey" />
+          </label>
           <label>Pronouns
             <select id="ccPronouns">
               <option>they/them</option>
@@ -90,10 +99,10 @@
       <section class="creator-preview">
         <h3>Preview</h3>
         <div id="paperDoll" class="paper-doll">
-          <div id="dollBody" class="doll-layer doll-body"></div>
-          <div id="dollArmor" class="doll-layer doll-armor"></div>
-          <div id="dollHead" class="doll-layer doll-head"></div>
-          <div id="dollHair" class="doll-layer doll-hair"></div>
+          <div id="dollBody"   class="doll-layer doll-body"></div>
+          <div id="dollArmor"  class="doll-layer doll-armor"></div>
+          <div id="dollHead"   class="doll-layer doll-head"></div>
+          <div id="dollHair"   class="doll-layer doll-hair"></div>
           <div id="dollAccent" class="doll-layer doll-accent"></div>
         </div>
         <div id="creatorSummary" class="creator-summary"></div>
@@ -101,29 +110,46 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════
+       GAME ROOT
+  ═══════════════════════════════════════════════════════ -->
   <div id="gameRoot" class="screen">
+
+    <!-- HUD TOP — branding, location chips, nav buttons, zoom controls -->
     <header id="hudTop">
       <div class="hud-left">
         <div class="logo-block">
-          <strong>STARFALL DIRECTIVE</strong>
+          <strong>SPACED</strong>
           <span id="worldClock">Cycle 1 · 06:00</span>
         </div>
         <div class="hud-chip"><span>Map</span><strong id="locationName">—</strong></div>
         <div class="hud-chip"><span>Mode</span><strong id="modeName">Exploration</strong></div>
         <div class="hud-chip"><span>Threat</span><strong id="threatName">Low</strong></div>
       </div>
+
       <div class="hud-right">
+        <!-- Panel toggles -->
         <button data-panel="journalPanel">Journal</button>
-        <button data-panel="mapPanel">Sector Map</button>
+        <button data-panel="mapPanel">Sector</button>
         <button data-panel="shipPanel">Ship</button>
         <button data-panel="inventoryPanel">Inventory</button>
         <button data-panel="crewPanel">Crew</button>
         <button data-panel="adminPanel" class="danger">Admin</button>
+
+        <!-- Zoom / map controls — now in HUD top, not floating over map -->
+        <div id="mapControls">
+          <button id="zoomOutBtn" title="Zoom out">−</button>
+          <button id="zoomInBtn"  title="Zoom in">+</button>
+          <button id="recenterBtn" title="Center on party">⌖</button>
+          <button id="endTurnBtn" class="combat-only" title="End turn">End Turn</button>
+        </div>
       </div>
     </header>
 
+    <!-- Party strip — left side -->
     <aside id="partyStrip"></aside>
 
+    <!-- Map viewport -->
     <main id="viewportWrap">
       <div id="mapViewport">
         <div id="tileLayer"></div>
@@ -131,62 +157,97 @@
         <div id="effectLayer"></div>
         <div id="selectionRing"></div>
       </div>
-      <div id="mapControls">
-        <button id="zoomOutBtn">-</button>
-        <button id="zoomInBtn">+</button>
-        <button id="recenterBtn">Center</button>
-        <button id="endTurnBtn" class="combat-only">End Turn</button>
-      </div>
       <div id="floatingActions"></div>
     </main>
 
+    <!-- HUD BOTTOM — collapsible resource/action/log bar -->
     <footer id="hudBottom">
+      <!-- Toggle button tab sits above the footer -->
+      <button id="hudToggleBtn" title="Toggle HUD">▼</button>
       <div id="resourceBar"></div>
       <div id="actionBar"></div>
       <div id="messageLog"></div>
     </footer>
 
+    <!-- Floating panels -->
     <div id="panelHost">
-      <section id="journalPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Journal & Quest Log</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+      <section id="journalPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Journal &amp; Quest Log</h3>
+          <div><button class="collapse-btn" title="Collapse">_</button><button class="close-btn" title="Close">×</button></div>
+        </div>
         <div class="panel-body" id="journalBody"></div>
       </section>
-      <section id="mapPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Sector Map & Travel</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="mapPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Sector Map &amp; Travel</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="sectorMapBody"></div>
       </section>
-      <section id="shipPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>The Scavenger's Wake</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="shipPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>The Scavenger's Wake</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="shipBody"></div>
       </section>
-      <section id="inventoryPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Inventory & Containers</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="inventoryPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Inventory &amp; Containers</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="inventoryBody"></div>
       </section>
-      <section id="crewPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Crew, Affinity & Romance</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="crewPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Crew, Affinity &amp; Romance</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="crewBody"></div>
       </section>
-      <section id="adminPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Admin / Testing</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="adminPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Admin / Testing</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="adminBody"></div>
       </section>
-      <section id="dialoguePanel" class="panel hidden draggable wide-panel">
-        <div class="panel-header"><h3>Dialogue</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="dialoguePanel" class="panel hidden wide-panel">
+        <div class="panel-header">
+          <h3>Dialogue</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="dialogueBody"></div>
       </section>
-      <section id="inspectPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Inspect / Loot</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="inspectPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Inspect / Loot</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="inspectBody"></div>
       </section>
-      <section id="codexPanel" class="panel hidden draggable">
-        <div class="panel-header"><h3>Codex / How It Works</h3><div><button class="collapse-btn">_</button><button class="close-btn">×</button></div></div>
+
+      <section id="codexPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>How To Play</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
         <div class="panel-body" id="codexBody"></div>
       </section>
     </div>
 
+    <!-- Context menu -->
     <div id="contextMenu" class="context-menu hidden"></div>
-  </div>
+
+  </div><!-- #gameRoot -->
 
   <script type="module" src="js/main.js"></script>
 </body>
