@@ -166,8 +166,10 @@ bindShellUI() {
   $('#zoomInBtn').addEventListener('click', () => this.setZoom(this.state.zoom + 0.1));
   $('#zoomOutBtn').addEventListener('click', () => this.setZoom(this.state.zoom - 0.1));
   $('#recenterBtn').addEventListener('click', () => {
-    const actor = this.commandActor() || this.selectedActor();
-    if (actor) this.centerOnActor(actor);
+    // Center on selected party member, fall back to first party member
+    const actor = this.selectedActor()
+      || this.state.party.map(id => this.state.roster.find(a => a.id === id)).find(Boolean);
+    this.centerOnActor(actor);
   });
   $('#endTurnBtn').addEventListener('click', () => this.endTurn());
   let _ctxDismissX = 0, _ctxDismissY = 0;
@@ -594,17 +596,24 @@ populateCreator() {
     this.applyViewportTransform();
   }
   centerOnActor(actor) {
+    if (!actor) actor = this.selectedActor() || this.state.roster.find(a => this.state.party.includes(a.id));
+    if (!actor) return;
     const size = this.data.config.map.tileSize;
-    this.state.camera.x = -(actor.x * size - 800);
-    this.state.camera.y = -(actor.y * size - 600);
+    const wrap = this.viewport?.parentElement;
+    const vw = wrap ? wrap.clientWidth  : window.innerWidth;
+    const vh = wrap ? wrap.clientHeight : window.innerHeight;
+    // Center the actor tile in the available viewport space
+    this.state.camera.x = (vw  / 2) - (actor.x * size * this.state.zoom) - (size * this.state.zoom / 2);
+    this.state.camera.y = (vh  / 2) - (actor.y * size * this.state.zoom) - (size * this.state.zoom / 2);
     this.applyViewportTransform();
   }
 
   selectActor(id) {
+    // Only allow selecting party members — never NPCs or enemies
+    if (id && !this.state.party.includes(id)) return;
     this.state.selectedActorId = id;
     this.renderAll();
   }
-
   handleActorPrimary(id, e) {
     const actor = this.state.roster.find(a => a.id === id);
     const selected = this.selectedActor();
@@ -735,7 +744,7 @@ populateCreator() {
     if (this.state.party.includes(actor.id)) this.revealFog();
     this.advanceTime(this.state.combat.active ? 1 : 6);
     this.pendingAction = null;
-    this.centerOnActor(actor);
+    // Do NOT auto-center — player controls camera position
     this.renderAll();
   }
 
@@ -1158,6 +1167,13 @@ attack(attacker, target, ability = null) {
       this.log(`It is not ${attacker.name}'s turn.`);
       return;
     }
+    // Enforce action economy — each actor only gets one action per turn
+    const costType = ability?.costType || 'action';
+    const costCheck = this.canSpendCost(attacker, costType, ability);
+    if (!costCheck.ok) {
+      this.log(costCheck.reason);
+      return;
+    }
     const weapon = getById(this.data.items, attacker.equipped.mainhand);
     const attackBonus = statMod(attacker.stats.agility) + attacker.level + (weapon?.attackBonus || 0) + (ability?.attackBonus || 0);
     const roll = rollDice('1d20');
@@ -1299,7 +1315,7 @@ attack(attacker, target, ability = null) {
 
     this.state.selectedActorId = nextId;
     this.pendingAction = null;
-    this.centerOnActor(next);
+    // Don't auto-center — player controls camera
 
     const isAI = next.ai !== 'player' && !this.state.party.includes(next.id);
     if (isAI) {

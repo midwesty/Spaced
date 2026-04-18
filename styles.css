@@ -209,6 +209,7 @@ button:disabled  { opacity: 0.45; cursor: not-allowed; filter: none; }
   display: flex; align-items: center; justify-content: center;
   font-size: 9px; color: rgba(255,255,255,0.18);
   transition: filter 0.08s;
+  overflow: hidden; /* clip cover shadow */
 }
 .tile:not(.wall):not(.fogged):hover { filter: brightness(1.14); cursor: pointer; }
 
@@ -225,26 +226,56 @@ button:disabled  { opacity: 0.45; cursor: not-allowed; filter: none; }
   content: '';
   width: 60%; height: 60%; border-radius: 6px;
   background: rgba(0,0,0,0.42);
+  pointer-events: none;
 }
 
-/* Loot — glowing pulse */
-.tile.loot::after {
-  content: '◆';
-  font-size: 14px;
-  color: #ffd970;
-  text-shadow: 0 0 8px rgba(255,210,80,0.7);
+/* ─── TILE ICONS ──────────────────────────────────────────── */
+.tile-icon {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  inset: 0;
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.7));
+  z-index: 1;
+}
+
+/* Doors / transitions — cyan, pulsing */
+.tile-door .tile-icon {
+  color: #5dd8c8;
+  font-size: 20px;
+  animation: door-pulse 2.4s ease-in-out infinite;
+}
+@keyframes door-pulse {
+  0%, 100% { opacity: 0.9; transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(0.88); }
+}
+
+/* Loot — amber, glowing */
+.tile-loot .tile-icon {
+  color: #f5c842;
+  font-size: 17px;
   animation: loot-pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(245,200,66,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.7));
 }
 @keyframes loot-pulse {
   0%, 100% { opacity: 1;    transform: scale(1);    }
   50%       { opacity: 0.6; transform: scale(0.85); }
 }
 
-/* Interact hint */
-.tile.interact:not(.loot)::after {
-  content: '▲';
-  font-size: 9px;
-  color: rgba(111,179,255,0.55);
+/* Interact only — soft blue, static */
+.tile-interact .tile-icon {
+  color: rgba(111,179,255,0.72);
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+/* Hover brightens icon */
+.tile:hover .tile-icon {
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.4)) drop-shadow(0 1px 3px rgba(0,0,0,0.7)) !important;
 }
 
 /* ─── FOG OF WAR ──────────────────────────────────────────── */
@@ -255,6 +286,7 @@ button:disabled  { opacity: 0.45; cursor: not-allowed; filter: none; }
   border-color: rgba(255,255,255,0.01) !important;
 }
 .tile.fogged::after { display: none !important; }
+.tile.fogged .tile-icon { display: none !important; }
 
 /* ─── ENTITIES ────────────────────────────────────────────── */
 .entity {

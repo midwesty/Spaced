@@ -171,18 +171,28 @@ export function renderMap(state, data, api) {
       const revealed = api.isTileRevealed(x, y);
 
       let cls = `tile ${t.type}`;
-      if (revealed) {
-        if (t.cover)    cls += ' cover';
-        if (t.loot)     cls += ' loot';
-        if (t.interact) cls += ' interact';
+      if (!revealed) {
+        cls += ' fogged';
+      } else {
+        if (t.cover) cls += ' cover';
+        // Classify the tile's interactive nature for icon rendering
+        if (t.transition)      cls += ' tile-door';
+        else if (t.loot)       cls += ' tile-loot';
+        else if (t.interact)   cls += ' tile-interact';
       }
-      if (!revealed)    cls += ' fogged';
 
       const tile = createEl('div', { class: cls });
       tile.style.left = `${x * size}px`;
       tile.style.top  = `${y * size}px`;
       tile.dataset.x  = x;
       tile.dataset.y  = y;
+
+      // Add icon span for interactive/loot/door tiles
+      if (revealed && (t.transition || t.loot || t.interact)) {
+        const iconSpan = createEl('span', { class: 'tile-icon' });
+        iconSpan.textContent = getTileIcon(t);
+        tile.appendChild(iconSpan);
+      }
 
       if (revealed) {
         tile.addEventListener('click', (e) => api.handleTileClick(x, y, e));
@@ -214,6 +224,7 @@ export function renderMap(state, data, api) {
     const ent = createEl('div', { class: cls });
     ent.style.left = `${actor.x * size}px`;
     ent.style.top  = `${actor.y * size}px`;
+    ent.dataset.actorid = actor.id;
 
     const icon = roleIcon[actor.role] || actor.name.split(' ').map(w => w[0]).slice(0, 2).join('');
     ent.innerHTML = `<span class="icon">${icon}</span><div class="bubble">${actor.name}</div>`;
@@ -226,6 +237,55 @@ export function renderMap(state, data, api) {
     });
     entityLayer.appendChild(ent);
   });
+}
+
+// Determine the best icon glyph for a tile based on its content
+function getTileIcon(t) {
+  // Doors / transitions first — most important to identify
+  if (t.transition) {
+    const dest = t.transition.mapId || '';
+    if (dest.includes('vent'))    return '▤'; // grate/vent
+    if (dest.includes('hold'))    return '⬒'; // hatch
+    if (dest.includes('wake'))    return '⬡'; // ship airlock
+    if (dest.includes('jail'))    return '▦'; // barred door
+    if (dest.includes('archive')) return '▤'; // archive hatch
+    if (dest.includes('derelict'))return '⬡'; // pressure door
+    return '▣';                               // generic door
+  }
+
+  // Loot containers — use container name clues
+  if (t.loot) {
+    const name = (t.containerName || t.interactText || '').toLowerCase();
+    if (name.includes('crate') || name.includes('cargo') || name.includes('duffel') || name.includes('box'))  return '▩';
+    if (name.includes('locker') || name.includes('lock') || name.includes('cache') || name.includes('safe')) return '▪';
+    if (name.includes('cabinet') || name.includes('trunk') || name.includes('reliquary'))                    return '▫';
+    if (name.includes('drawer') || name.includes('desk'))  return '▬';
+    if (name.includes('pod') || name.includes('barrel'))   return '▧';
+    if (name.includes('shelf') || name.includes('record')) return '▤';
+    return '◈'; // generic loot
+  }
+
+  // Interact-only tiles — classify by interactText keywords
+  if (t.interact) {
+    const txt = (t.interactText || '').toLowerCase();
+    if (txt.includes('door') || txt.includes('gate') || txt.includes('hatch') || txt.includes('grate')) return '▣';
+    if (txt.includes('terminal') || txt.includes('console') || txt.includes('computer') || txt.includes('panel')) return '▦';
+    if (txt.includes('desk') || txt.includes('counter') || txt.includes('workbench') || txt.includes('table')) return '▬';
+    if (txt.includes('bunk') || txt.includes('bed') || txt.includes('rest')) return '▭';
+    if (txt.includes('galley') || txt.includes('cook') || txt.includes('food') || txt.includes('kitchen')) return '◇';
+    if (txt.includes('stall') || txt.includes('shop') || txt.includes('vendor') || txt.includes('market')) return '◆';
+    if (txt.includes('board') || txt.includes('bulletin') || txt.includes('notice') || txt.includes('sign')) return '▤';
+    if (txt.includes('nav') || txt.includes('navigation') || txt.includes('chart') || txt.includes('sector')) return '◈';
+    if (txt.includes('med') || txt.includes('scan') || txt.includes('clinic') || txt.includes('diagnostic')) return '✚';
+    if (txt.includes('engine') || txt.includes('reactor') || txt.includes('fuel')) return '◉';
+    if (txt.includes('strut') || txt.includes('berth') || txt.includes('cradle') || txt.includes('mooring')) return '◎';
+    if (txt.includes('airlock') || txt.includes('seal') || txt.includes('berth e-7')) return '▣';
+    if (txt.includes('camp') || txt.includes('fire pit')) return '◇';
+    if (txt.includes('corridor') || txt.includes('passage') || txt.includes('junction')) return '◌';
+    return '◇'; // generic interact
+  }
+
+  return '·';
 }
 
 // ─── RESOURCES ────────────────────────────────────────────────────────────────
