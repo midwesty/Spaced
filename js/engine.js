@@ -1,6 +1,6 @@
 import { $, $$, chance, clamp, createEl, deepClone, distance, getById, pick, rand, rollDice, statMod, uid } from './utils.js';
 import { applyDerivedStats, createActorFromTemplate, freshState, loadState, saveState } from './state.js';
-import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSectorMap, renderShip, renderTopHUD } from './ui.js';
+import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD } from './ui.js';
 
 export class GameEngine {
   constructor(data) {
@@ -8,6 +8,7 @@ export class GameEngine {
     this.state = loadState() || freshState(data);
     this.pendingAction = null;
     this.drag = { active: false, pending: false, pointerId: null, lastX: 0, lastY: 0, startX: 0, startY: 0 };
+    this.moving = false; // true while step-by-step movement animation is running
     this.pinch = { active: false, startDistance: 0, startZoom: 1 };
     this.viewport = $('#mapViewport');
     this.api = this.buildApi();
@@ -48,6 +49,8 @@ export class GameEngine {
       longRest: () => this.longRest(),
       openPanel: id => this.openPanel(id),
       inspectEquipmentSlot: (actorId, slot) => this.inspectEquipmentSlot(actorId, slot),
+      unequipSlot: (actorId, slot) => this.unequipSlot(actorId, slot),
+      equipItem: (actor, idx) => this.equipItem(actor, idx),
       inspectInventoryItem: (actorId, idx, x, y, forceContext = false) => this.inspectInventoryItem(actorId, idx, x, y, forceContext),
       handleInventoryDrop: (e, actorId, idx) => this.handleInventoryDrop(e, actorId, idx),
       inspectCargoItem: idx => this.inspectCargoItem(idx),
@@ -56,6 +59,14 @@ export class GameEngine {
       adminFeedParty: () => this.adminFeedParty(),
       adjustResource: (k, amt) => this.adjustResource(k, amt),
       adminToggleCombat: () => this.adminToggleCombat(),
+      adminUnlockShip: () => {
+        this.state.flags.shipOwned = true;
+        this.state.flags.acquiredWake = true;
+        this.state.flags.tutorialComplete = true;
+        this.advanceQuest('main_awake', 2);
+        this.log('Admin: Ship unlocked. Travel available.');
+        this.renderAll();
+      },
       adminSpawnEnemy: () => this.adminSpawnEnemy(),
       advanceTime: mins => this.advanceTime(mins),
       adminAdvanceMainQuest: () => this.adminAdvanceMainQuest(),
@@ -68,6 +79,10 @@ export class GameEngine {
       shipRest: () => this.shipRest(),
       convertScrapToFuel: () => this.convertScrapToFuel(),
       openCargo: () => this.openPanel('inventoryPanel'),
+      listSaves: () => this.listSaves(),
+      saveToSlot: (slot, name) => this.saveToSlot(slot, name),
+      loadFromSlot: slot => this.loadFromSlot(slot),
+      deleteSaveSlot: slot => this.deleteSaveSlot(slot),
     };
   }
 
@@ -582,6 +597,7 @@ populateCreator() {
     renderCrew(this.state, this.data);
     renderShip(this.state, this.data, this.api);
     renderSectorMap(this.state, this.data, this.api);
+    renderSaves(this.state, this.data, this.api);
     renderAdmin(this.state, this.data, this.api);
     renderCodex();
     this.applyViewportTransform();
@@ -707,45 +723,141 @@ populateCreator() {
     ]);
   }
 
-  moveActorToward(actor, x, y) {
+  // BFS pathfinder — returns array of {x,y} steps from actor to (tx,ty)
+  findPath(mapId, startX, startY, tx, ty, actorId, maxSteps = 40) {
+    const map = getById(this.data.maps, mapId);
+    if (!map) return null;
+    const key = (x, y) => `${x},${y}`;
+    const queue = [{ x: startX, y: startY, path: [] }];
+    const visited = new Set([key(startX, startY)]);
+    while (queue.length) {
+      const { x, y, path } = queue.shift();
+      for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= map.width || ny >= map.height) continue;
+        if (visited.has(key(nx, ny))) continue;
+        const t = map.tiles[ny]?.[nx];
+        if (!t) continue;
+        // Stop at locked tiles but not the destination itself
+        if (t.blocked || (t.locked && !(nx === tx && ny === ty))) continue;
+        // Allow passing through occupied tiles only at destination
+        if (this.isOccupied(mapId, nx, ny, actorId) && !(nx === tx && ny === ty)) continue;
+        const newPath = [...path, { x: nx, y: ny }];
+        if (nx === tx && ny === ty) return newPath;
+        if (newPath.length >= maxSteps) continue;
+        visited.add(key(nx, ny));
+        queue.push({ x: nx, y: ny, path: newPath });
+      }
+    }
+    return null;
+  }
+
+  moveActorToward(actor, tx, ty) {
     if (!actor) return;
     if (this.state.combat.active && this.state.combat.turnOrder[this.state.combat.currentTurnIndex] !== actor.id) {
       this.log(`It is not ${actor.name}'s turn.`);
       return;
     }
+    if (this.moving) return; // block input during animation
+
     const map = this.currentMap();
-    if (!map.tiles[y]?.[x]) return;
-    if (map.tiles[y][x].blocked) {
+    const destTile = map.tiles[ty]?.[tx];
+    if (!destTile) return;
+
+    // Check locked tile at destination
+    if (destTile.locked) {
+      return this.handleLockedTile(actor, tx, ty, destTile);
+    }
+
+    if (destTile.blocked && !destTile.transition) {
       this.log('Blocked terrain.');
       return;
     }
-    if (this.isOccupied(actor.mapId, x, y, actor.id)) {
+    if (this.isOccupied(actor.mapId, tx, ty, actor.id)) {
       this.log('That space is occupied.');
       return;
     }
-    const dist = distance(actor, { x, y });
-    if (this.state.combat.active && dist > (this.state.combat.movementLeft[actor.id] ?? actor.moveRange)) {
-      this.log('Out of movement range.');
+
+    // Find path
+    const path = this.findPath(actor.mapId, actor.x, actor.y, tx, ty, actor.id);
+    if (!path || path.length === 0) {
+      this.log('No clear path to that location.');
       return;
     }
+
+    // In combat, limit by movement points
+    let steps = path;
+    if (this.state.combat.active) {
+      const movLeft = this.state.combat.movementLeft[actor.id] ?? actor.moveRange;
+      if (movLeft <= 0) { this.log('No movement remaining.'); return; }
+      steps = path.slice(0, movLeft);
+    }
+
+    this.walkPath(actor, steps, 0);
+  }
+
+  walkPath(actor, steps, stepIdx) {
+    if (stepIdx >= steps.length) {
+      this.moving = false;
+      // Final tile triggers
+      const last = steps[steps.length - 1];
+      this.resolveTileTriggers(actor, last.x, last.y);
+      if (!this.state.combat.active && this.state.party.includes(actor.id) && this.state.partyControl.follow) {
+        this.syncPartyFormation(actor);
+      }
+      if (this.state.party.includes(actor.id)) this.revealFog();
+      this.advanceTime(this.state.combat.active ? steps.length : steps.length * 3);
+      this.pendingAction = null;
+      this.renderAll();
+      return;
+    }
+
+    this.moving = true;
+    const { x, y } = steps[stepIdx];
     actor.x = x; actor.y = y;
-    // Animate entity sliding to new position
+
+    // In combat, deduct movement per step
+    if (this.state.combat.active) {
+      this.state.combat.movementLeft[actor.id] = Math.max(0, (this.state.combat.movementLeft[actor.id] ?? actor.moveRange) - 1);
+    }
+
+    // Animate the entity element
     const size = this.data.config.map.tileSize;
     const entEl = document.querySelector(`#entityLayer .entity[data-actorid="${actor.id}"]`);
     if (entEl) {
-      entEl.style.transition = 'left 0.16s ease, top 0.16s ease';
+      entEl.style.transition = 'left 0.15s linear, top 0.15s linear';
       entEl.style.left = `${x * size}px`;
       entEl.style.top  = `${y * size}px`;
-      setTimeout(() => { if (entEl) entEl.style.transition = ''; }, 200);
     }
-    if (this.state.combat.active) this.state.combat.movementLeft[actor.id] = Math.max(0, (this.state.combat.movementLeft[actor.id] ?? actor.moveRange) - dist);
-    this.resolveTileTriggers(actor, x, y);
-    if (!this.state.combat.active && this.state.party.includes(actor.id) && this.state.partyControl.follow) this.syncPartyFormation(actor);
+    // Reveal fog incrementally
     if (this.state.party.includes(actor.id)) this.revealFog();
-    this.advanceTime(this.state.combat.active ? 1 : 6);
-    this.pendingAction = null;
-    // Do NOT auto-center — player controls camera position
+
+    // Re-render to update fog tiles as we walk
     this.renderAll();
+
+    setTimeout(() => this.walkPath(actor, steps, stepIdx + 1), 140);
+  }
+
+  handleLockedTile(actor, x, y, tile) {
+    const reqItem = tile.requiredItem;
+    if (reqItem) {
+      const keyIdx = actor.inventory.findIndex(e => e.itemId === reqItem);
+      const item = getById(this.data.items, reqItem);
+      if (keyIdx >= 0) {
+        // Has key — use it
+        actor.inventory.splice(keyIdx, 1);
+        tile.locked = false;
+        this.log(`${actor.name} uses ${item?.name || reqItem} to unlock the door.`);
+        this.state.flags[`unlocked_${x}_${y}`] = true;
+        this.renderAll();
+        // Now move through
+        this.moveActorToward(actor, x, y);
+      } else {
+        this.log(`🔒 Locked. Requires: ${item?.name || reqItem}.`);
+      }
+    } else {
+      this.log(`🔒 Locked. ${tile.lockHint || 'You need to find another way in.'}`);
+    }
   }
 
   resolveTileTriggers(actor, x, y) {
@@ -878,37 +990,47 @@ tryUseFirstAbilityAt(x, y) {
 interactWithActor(id) {
     const actor = this.state.roster.find(a => a.id === id);
     if (!actor) return;
-    this.state.selectedActorId = id;
+    // Save current party selection — never let NPC become selectedActorId
+    const prevSelectedId = this.state.party.includes(this.state.selectedActorId)
+      ? this.state.selectedActorId
+      : (this.state.party[0] || null);
+    // Do NOT overwrite selectedActorId with the NPC id
     const key = this.actorKey(actor);
     const memory = this.state.dialogueMemory[key] || { count: 0, nodes: [] };
     if (key === 'fixer_naia' && this.state.flags.has_debt_ledger && !this.state.flags.debt_ledger_turned_in) {
       this.markTalked(actor, 'naia_ledger_turnin');
       this.openDialogue('naia_ledger_turnin', actor);
+      this.state.selectedActorId = prevSelectedId;
       return;
     }
     if (key === 'archivist_pell' && this.state.flags.has_reef_idol && !this.state.flags.learnedShipSecret) {
       this.markTalked(actor, 'archivist_idol');
       this.openDialogue('archivist_idol', actor);
+      this.state.selectedActorId = prevSelectedId;
       return;
     }
     if (actor.dialogueId && memory.count === 0) {
       this.markTalked(actor, actor.dialogueId);
       this.openDialogue(actor.dialogueId, actor);
+      this.state.selectedActorId = prevSelectedId;
       this.checkQuestProgress();
       return;
     }
     if (actor.repeatDialogueId) {
       this.markTalked(actor, actor.repeatDialogueId);
       this.openDialogue(actor.repeatDialogueId, actor);
+      this.state.selectedActorId = prevSelectedId;
       this.checkQuestProgress();
       return;
     }
     if (actor.dialogueId && memory.count > 0) {
       this.markTalked(actor, actor.dialogueId);
       this.openDialogue(actor.dialogueId, actor);
+      this.state.selectedActorId = prevSelectedId;
       return;
     }
     this.openAmbientDialogue(actor);
+    this.state.selectedActorId = prevSelectedId;
     this.checkQuestProgress();
   }
 
@@ -927,37 +1049,49 @@ interactWithActor(id) {
   }
 
   inspectTile(x, y) {
-    const tile = this.currentMap().tiles[y][x];
+    const tile = this.currentMap().tiles[y]?.[x];
+    if (!tile) return;
     const title = tile.containerName || tile.interactText || `Tile (${x}, ${y})`;
     let html = `<div class="card"><strong>${title}</strong><div class="small">${tile.type}</div>`;
     if (tile.interactText) html += `<p>${tile.interactText}</p>`;
     if (tile.transition) html += `<p><strong>Leads to:</strong> ${tile.transition.mapId}</p>`;
-    if (tile.lootTable?.length) {
+    if (tile.locked) html += `<p class="warning">🔒 Locked. ${tile.lockHint || 'Requires a key or another way in.'}</p>`;
+    const lootable = Array.isArray(tile.lootTable) && tile.lootTable.length > 0;
+    if (lootable) {
       html += `<p><strong>Contents:</strong></p>`;
       tile.lootTable.forEach((l, idx) => {
         const item = getById(this.data.items, l.itemId);
-        html += `<div class="statline"><span>${item?.name || l.itemId}</span><strong>x${l.qty}</strong> <button data-loot="${idx}">Take</button></div>`;
+        const name = item?.name || l.itemId;
+        html += `<div class="statline"><span>${name}</span><strong>x${l.qty}</strong> <button data-loot="${idx}">Take</button></div>`;
       });
     } else if (tile.loot) {
-      html += `<p>It looks recently emptied.</p>`;
+      html += `<p class="small">It looks recently emptied.</p>`;
     }
     html += `</div>`;
     renderInspect(this.state, this.data, html);
     this.openPanel('inspectPanel');
-    $$('[data-loot]').forEach(btn => btn.onclick = () => {
-      const idx = Number(btn.dataset.loot);
-      const loot = tile.lootTable[idx];
-      const actor = this.selectedActor();
-      actor.inventory.push(deepClone(loot));
-      tile.lootTable.splice(idx, 1);
-      if (loot.itemId) this.state.flags[`has_${loot.itemId}`] = true;
-      if (tile.questFlag) this.state.flags[tile.questFlag] = true;
-      if (!tile.lootTable.length) tile.loot = false;
-      this.log(`${actor.name} loots ${loot.qty}x ${loot.itemId}.`);
-      this.checkQuestProgress();
-      this.renderAll();
-      this.inspectTile(x, y);
-    });
+    if (lootable) {
+      $$('[data-loot]').forEach(btn => btn.onclick = () => {
+        const idx = Number(btn.dataset.loot);
+        const loot = tile.lootTable[idx];
+        if (!loot) return;
+        // Use selected party member, fall back to first party member
+        const actor = (this.state.party.includes(this.state.selectedActorId)
+          ? this.selectedActor()
+          : null)
+          || this.state.roster.find(a => this.state.party.includes(a.id) && !a.dead);
+        if (!actor) return this.log('No party member available to loot.');
+        actor.inventory.push(deepClone(loot));
+        tile.lootTable.splice(idx, 1);
+        if (loot.itemId) this.state.flags[`has_${loot.itemId}`] = true;
+        if (tile.questFlag) this.state.flags[tile.questFlag] = true;
+        if (!tile.lootTable.length) tile.loot = false;
+        this.log(`${actor.name} takes ${loot.qty}x ${item?.name || loot.itemId}.`);
+        this.checkQuestProgress();
+        this.renderAll();
+        this.inspectTile(x, y);
+      });
+    }
   }
 
   showActorContext(id, x, y) {
@@ -996,49 +1130,97 @@ interactWithActor(id) {
 
   inspectEquipmentSlot(actorId, slot) {
     const actor = this.state.roster.find(a => a.id === actorId);
-    const itemId = actor.equipped[slot];
+    const itemId = actor.equipped?.[slot];
     const item = getById(this.data.items, itemId);
+    const sellVal = item ? (item.sellValue || (item.rarity === 'rare' ? 80 : 10)) : 0;
+    let statsHtml = '';
+    if (item?.damage) statsHtml += `<div class="statline"><span>Damage</span><strong>${item.damage}</strong></div>`;
     renderInspect(this.state, this.data, `
       <div class="card">
         <strong>${slot}</strong>
         <p>${item ? item.name : 'Empty slot.'}</p>
         <div class="small">${item?.description || ''}</div>
-      </div>
-    `);
-    this.openPanel('inspectPanel');
-  }
-
-  inspectInventoryItem(actorId, idx, x = 200, y = 200, forceContext = false) {
-    const actor = this.state.roster.find(a => a.id === actorId);
-    const entry = actor.inventory[idx];
-    const item = getById(this.data.items, entry.itemId);
-    if (!entry || !item) return;
-    if (forceContext) {
-      return this.showContextMenu(x, y, [
-        ['Use / Equip', () => this.useItem(actor, idx)],
-        ['Send to Cargo', () => this.sendItemToCargo(actor, idx)],
-        ['Rename Stack', () => this.renameItemStack(actor, idx)],
-        ['Drop', () => this.dropItem(actor, idx)]
-      ]);
-    }
-    renderInspect(this.state, this.data, `
-      <div class="card">
-        <strong>${entry.customName || item.name}</strong>
-        <div class="small">${item.type} · ${item.rarity || 'common'} · x${entry.qty}</div>
-        <p>${item.description}</p>
-        <div class="row-wrap">
-          <button id="useInvBtn">Use / Equip</button>
-          <button id="sendInvBtn">Send to Cargo</button>
-          <button id="renameInvBtn">Rename</button>
-          <button id="dropInvBtn">Drop</button>
+        ${statsHtml}
+        ${item ? `<div class="statline"><span>Sell Value</span><strong>${sellVal} credits</strong></div>` : ''}
+        <div class="row-wrap" style="margin-top:10px">
+          ${item ? `<button id="unequipSlotBtn">Unequip</button>` : ''}
         </div>
       </div>
     `);
     this.openPanel('inspectPanel');
-    $('#useInvBtn').onclick = () => this.useItem(actor, idx);
-    $('#sendInvBtn').onclick = () => this.sendItemToCargo(actor, idx);
-    $('#renameInvBtn').onclick = () => this.renameItemStack(actor, idx);
-    $('#dropInvBtn').onclick = () => this.dropItem(actor, idx);
+    if (item) $('#unequipSlotBtn').onclick = () => this.unequipSlot(actorId, slot);
+  }
+
+  inspectInventoryItem(actorId, idx, x = 200, y = 200, forceContext = false) {
+    const actor = this.state.roster.find(a => a.id === actorId);
+    const entry = actor?.inventory[idx];
+    const item = entry ? getById(this.data.items, entry.itemId) : null;
+    if (!entry || !item) return;
+
+    if (forceContext) {
+      const opts = [['Send to Cargo', () => this.sendItemToCargo(actor, idx)], ['Drop', () => this.dropItem(actor, idx)]];
+      if (item.type === 'consumable') opts.unshift(['Use', () => this.useItem(actor, idx)]);
+      if (item.slot) opts.unshift(['Equip', () => this.equipItem(actor, idx)]);
+      if (item.type === 'container') opts.push(['Rename Container', () => this.renameItemStack(actor, idx)]);
+      return this.showContextMenu(x, y, opts);
+    }
+
+    const isEquippable = !!item.slot;
+    const isConsumable = item.type === 'consumable';
+    const isContainer  = item.type === 'container';
+    const sellVal = item.sellValue || (item.rarity === 'rare' ? 80 : item.rarity === 'uncommon' ? 30 : 10);
+
+    let statsHtml = '';
+    if (item.damage)      statsHtml += `<div class="statline"><span>Damage</span><strong>${item.damage}${item.attackBonus ? ` (+${item.attackBonus} hit)` : ''}</strong></div>`;
+    if (item.slot)        statsHtml += `<div class="statline"><span>Equip Slot</span><strong>${item.slot}</strong></div>`;
+    if (item.effect)      statsHtml += Object.entries(item.effect).map(([k,v]) => `<div class="statline"><span>${k}</span><strong>+${v}</strong></div>`).join('');
+    statsHtml += `<div class="statline"><span>Sell Value</span><strong>${sellVal} credits</strong></div>`;
+
+    const btnUse    = isConsumable ? `<button id="invUseBtn">Use</button>` : '';
+    const btnEquip  = isEquippable ? `<button id="invEquipBtn">Equip → ${item.slot}</button>` : '';
+    const btnRename = isContainer  ? `<button id="invRenameBtn">Rename</button>` : '';
+
+    renderInspect(this.state, this.data, `
+      <div class="card">
+        <strong>${entry.customName || item.name}</strong>
+        <div class="small item-type-${item.type}">${item.type} · ${item.rarity || 'common'} · x${entry.qty}</div>
+        <p>${item.description}</p>
+        ${statsHtml}
+        <div class="row-wrap" style="margin-top:10px">
+          ${btnUse}${btnEquip}
+          <button id="invCargoBtn">→ Cargo</button>
+          ${btnRename}
+          <button id="invDropBtn" class="danger">Drop</button>
+        </div>
+      </div>
+    `);
+    this.openPanel('inspectPanel');
+    if (isConsumable) $('#invUseBtn').onclick   = () => this.useItem(actor, idx);
+    if (isEquippable) $('#invEquipBtn').onclick  = () => this.equipItem(actor, idx);
+    if (isContainer)  $('#invRenameBtn').onclick = () => this.renameItemStack(actor, idx);
+    $('#invCargoBtn').onclick = () => this.sendItemToCargo(actor, idx);
+    $('#invDropBtn').onclick  = () => this.dropItem(actor, idx);
+  }
+
+  equipItem(actor, idx) {
+    const entry = actor.inventory[idx];
+    const item = getById(this.data.items, entry?.itemId);
+    if (!item?.slot) return this.log('This item has no equipment slot.');
+    actor.equipped[item.slot] = item.id;
+    this.log(`${actor.name} equips ${item.name}.`);
+    this.renderAll();
+  }
+
+  unequipSlot(actorId, slot) {
+    const actor = this.state.roster.find(a => a.id === actorId);
+    if (!actor) return;
+    const itemId = actor.equipped[slot];
+    if (!itemId) return this.log('Nothing equipped there.');
+    const item = getById(this.data.items, itemId);
+    actor.inventory.push({ itemId, qty: 1 });
+    actor.equipped[slot] = null;
+    this.log(`${actor.name} unequips ${item?.name || itemId}.`);
+    this.renderAll();
   }
 
   handleInventoryDrop(e, actorId, idx) {
@@ -1107,8 +1289,8 @@ useItem(actor, idx) {
     return;
   }
   if (item.type === 'container') {
-    this.log(`${item.name} is a named container hook. Nested container UI can be expanded later.`);
-    this.renameItemStack(actor, idx);
+    this.log(`${item.name} is a carry container. Use 'Rename' to label it.`);
+    return;
   }
 }
 
@@ -1509,13 +1691,22 @@ attack(attacker, target, ability = null) {
   travelToSector(nodeId) {
     const node = getById(this.data.config.sectorNodes, nodeId);
     if (!node) return;
-    if (!this.state.flags.shipOwned) return this.log('You do not control a ship yet.');
-    if (this.state.resources.fuel < node.fuelCost) return this.log('Not enough fuel.');
+    if (this.state.currentSectorNode === nodeId) return this.log(`Already at ${node.name}.`);
+    if (!this.state.flags.shipOwned) {
+      this.log('You do not control a ship yet. Acquire the Scavenger\'s Wake first — it\'s impounded in the Civic Quarter.');
+      this.log('Hint: Speak to the dock warden, impound clerk, and find the three keys needed to release the ship.');
+      return;
+    }
+    if (this.state.resources.fuel < node.fuelCost) {
+      this.log(`Not enough fuel. Need ${node.fuelCost}, have ${this.state.resources.fuel}. Convert scrap to fuel via the Ship panel.`);
+      return;
+    }
     this.state.resources.fuel -= node.fuelCost;
     this.advanceTime(node.travelHours * 60);
     this.state.currentSectorNode = node.id;
     this.state.mapId = node.mapId;
     this.state.visitedMaps = Array.from(new Set([...(this.state.visitedMaps || []), this.state.mapId]));
+    if (!this.state.fogRevealed) this.state.fogRevealed = {};
     (getById(this.data.maps, this.state.mapId)?.actors || []).forEach(t => {
       if (!this.state.roster.some(a => a.mapId === this.state.mapId && a.templateId === t.id)) {
         const actor = createActorFromTemplate(t, this.data);
@@ -1535,9 +1726,11 @@ attack(attacker, target, ability = null) {
         actor.mapId = this.state.mapId; actor.x = free.x; actor.y = free.y;
       }
     });
+    this.revealFog();
     this.resolveTravelEncounter(node);
     this.checkQuestProgress();
-    this.log(`Travel complete: ${node.name}.`);
+    this.log(`Travel complete: arrived at ${node.name}.`);
+    requestAnimationFrame(() => this.fitViewportToScreen(true));
     this.renderAll();
   }
 
@@ -1753,7 +1946,72 @@ attack(attacker, target, ability = null) {
     this.renderAll();
   }
 
+  // ─── MULTI-SLOT SAVE / LOAD ───────────────────────────────
+  static SAVE_PREFIX = 'spaced_save_';
+  static MAX_SLOTS   = 6;
+
+  listSaves() {
+    const saves = [];
+    for (let i = 0; i < GameEngine.MAX_SLOTS; i++) {
+      const raw = localStorage.getItem(`${GameEngine.SAVE_PREFIX}${i}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          saves.push({
+            slot: i,
+            name: parsed._saveName || `Save ${i + 1}`,
+            timestamp: parsed._saveTimestamp || 0,
+            mapId: parsed.mapId || '—',
+            timeMinutes: parsed.timeMinutes || 0,
+            party: parsed.party || []
+          });
+        } catch { /* skip corrupt slot */ }
+      }
+    }
+    return saves;
+  }
+
+  saveToSlot(slot, name = null) {
+    const saveData = JSON.parse(JSON.stringify(this.state));
+    saveData._saveName = name || `Save ${slot + 1}`;
+    saveData._saveTimestamp = Date.now();
+    localStorage.setItem(`${GameEngine.SAVE_PREFIX}${slot}`, JSON.stringify(saveData));
+    this.log(`Game saved to slot ${slot + 1}: "${saveData._saveName}".`);
+  }
+
+  loadFromSlot(slot) {
+    const raw = localStorage.getItem(`${GameEngine.SAVE_PREFIX}${slot}`);
+    if (!raw) { this.log(`Slot ${slot + 1} is empty.`); return false; }
+    try {
+      const parsed = JSON.parse(raw);
+      delete parsed._saveName;
+      delete parsed._saveTimestamp;
+      this.state = parsed;
+      // Ensure fogRevealed exists on old saves
+      if (!this.state.fogRevealed) this.state.fogRevealed = {};
+      this.log(`Loaded from slot ${slot + 1}.`);
+      this.revealFog();
+      requestAnimationFrame(() => this.fitViewportToScreen(true));
+      this.renderAll();
+      return true;
+    } catch (e) {
+      this.log(`Failed to load slot ${slot + 1}: ${e.message}`);
+      return false;
+    }
+  }
+
+  deleteSaveSlot(slot) {
+    localStorage.removeItem(`${GameEngine.SAVE_PREFIX}${slot}`);
+    this.log(`Slot ${slot + 1} deleted.`);
+  }
+
   save() {
+    // Auto-save always goes to slot 0 silently
+    const saveData = JSON.parse(JSON.stringify(this.state));
+    saveData._saveName = 'Autosave';
+    saveData._saveTimestamp = Date.now();
+    localStorage.setItem(`${GameEngine.SAVE_PREFIX}0`, JSON.stringify(saveData));
+    // Also keep legacy key for backwards compat
     saveState(this.state);
   }
 

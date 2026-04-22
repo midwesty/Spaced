@@ -134,6 +134,7 @@
         <button data-panel="shipPanel">Ship</button>
         <button data-panel="inventoryPanel">Inventory</button>
         <button data-panel="crewPanel">Crew</button>
+        <button data-panel="savesPanel">Saves</button>
         <button data-panel="adminPanel" class="danger">Admin</button>
 
         <!-- Zoom / map controls — now in HUD top, not floating over map -->
@@ -209,6 +210,14 @@
           <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
         </div>
         <div class="panel-body" id="crewBody"></div>
+      </section>
+
+      <section id="savesPanel" class="panel hidden">
+        <div class="panel-header">
+          <h3>Save &amp; Load</h3>
+          <div><button class="collapse-btn">_</button><button class="close-btn">×</button></div>
+        </div>
+        <div class="panel-body" id="savesBody"></div>
       </section>
 
       <section id="adminPanel" class="panel hidden">
