@@ -1378,11 +1378,14 @@
      "zone": "restricted_impound"
     },
     {
-     "type": "wall",
-     "blocked": true,
-     "cover": true,
+     "type": "metal",
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": true,
+     "locked": true,
+     "requiredItem": "impound_key",
+     "lockHint": "Requires the impound key from Commander Vask.",
      "zone": "restricted_impound",
      "interactText": "Heavy civic security door. Requires the impound key or a convincing story."
     },
@@ -2724,14 +2727,18 @@
     {
      "type": "metal",
      "blocked": false,
-     "interact": true,
-     "interactText": "A stairwell passage leads down to the Market Concourse."
+     "cover": false,
+     "loot": false,
+     "interact": false,
+     "zone": "transition_ab"
     },
     {
      "type": "metal",
      "blocked": false,
-     "interact": true,
-     "interactText": "A stairwell passage leads down to the Market Concourse."
+     "cover": false,
+     "loot": false,
+     "interact": false,
+     "zone": "transition_ab"
     },
     {
      "type": "wall",
@@ -2827,14 +2834,18 @@
     {
      "type": "metal",
      "blocked": false,
-     "interact": true,
-     "interactText": "A passage runs between the upper docks and the market below."
+     "cover": false,
+     "loot": false,
+     "interact": false,
+     "zone": "transition_bc"
     },
     {
      "type": "metal",
      "blocked": false,
-     "interact": true,
-     "interactText": "A passage runs between the upper docks and the market below."
+     "cover": false,
+     "loot": false,
+     "interact": false,
+     "zone": "transition_bc"
     },
     {
      "type": "wall",
@@ -2914,18 +2925,20 @@
      "interact": false
     },
     {
-     "type": "wall",
-     "blocked": true,
-     "cover": true,
+     "type": "metal",
+     "blocked": false,
+     "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "zone": "transition_ac"
     },
     {
-     "type": "wall",
-     "blocked": true,
-     "cover": true,
+     "type": "metal",
+     "blocked": false,
+     "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "zone": "transition_ac"
     },
     {
      "type": "wall",

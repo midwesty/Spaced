@@ -174,5 +174,12 @@
     "type": "container",
     "rarity": "common",
     "description": "A tagged carry satchel with hidden pockets and a burned serial strip."
+  },
+  {
+    "id": "impound_key",
+    "name": "Impound Release Key",
+    "type": "quest",
+    "rarity": "rare",
+    "description": "A civic-issued release chip for the Scavenger's Wake. Obtained from Commander Vask or through other means."
   }
 ]
