@@ -1060,9 +1060,8 @@ interactWithActor(id) {
     if (lootable) {
       html += `<p><strong>Contents:</strong></p>`;
       tile.lootTable.forEach((l, idx) => {
-        const item = getById(this.data.items, l.itemId);
-        const name = item?.name || l.itemId;
-        html += `<div class="statline"><span>${name}</span><strong>x${l.qty}</strong> <button data-loot="${idx}">Take</button></div>`;
+        const itemName = getById(this.data.items, l.itemId)?.name || l.itemId;
+        html += `<div class="statline"><span>${itemName}</span><strong>x${l.qty}</strong> <button data-loot="${idx}">Take</button></div>`;
       });
     } else if (tile.loot) {
       html += `<p class="small">It looks recently emptied.</p>`;
@@ -1075,7 +1074,9 @@ interactWithActor(id) {
         const idx = Number(btn.dataset.loot);
         const loot = tile.lootTable[idx];
         if (!loot) return;
-        // Use selected party member, fall back to first party member
+        // Look up item name here inside the handler — not from the outer loop closure
+        const itemData = getById(this.data.items, loot.itemId);
+        // Use selected party member, fall back to first living party member
         const actor = (this.state.party.includes(this.state.selectedActorId)
           ? this.selectedActor()
           : null)
@@ -1086,7 +1087,7 @@ interactWithActor(id) {
         if (loot.itemId) this.state.flags[`has_${loot.itemId}`] = true;
         if (tile.questFlag) this.state.flags[tile.questFlag] = true;
         if (!tile.lootTable.length) tile.loot = false;
-        this.log(`${actor.name} takes ${loot.qty}x ${item?.name || loot.itemId}.`);
+        this.log(`${actor.name} takes ${loot.qty}x ${itemData?.name || loot.itemId}.`);
         this.checkQuestProgress();
         this.renderAll();
         this.inspectTile(x, y);
