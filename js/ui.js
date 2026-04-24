@@ -305,7 +305,7 @@ export function renderResources(state) {
   });
 }
 
-// ─── ACTION BAR ───────────────────────────────────────────────────────────────
+// ─── ACTION / BONUS ACTION BAR ────────────────────────────────────────────────
 export function renderActionBar(state, data, api) {
   const bar = $('#actionBar');
   if (!bar) return;
@@ -316,7 +316,14 @@ export function renderActionBar(state, data, api) {
     || state.roster.find(a => state.party.includes(a.id) && !a.dead);
   if (!actor) return;
 
-  if (state.combat.active) {
+  const inCombat  = state.combat.active;
+  const isMyTurn  = inCombat && state.combat.turnOrder[state.combat.currentTurnIndex] === actor.id;
+  const actionSpent = inCombat && !!state.combat.acted?.[actor.id];
+  const bonusSpent  = inCombat && !!state.combat.bonusActed?.[actor.id];
+  const movLeft     = inCombat ? (state.combat.movementLeft?.[actor.id] ?? actor.moveRange) : actor.moveRange;
+
+  // Combat turn order strip
+  if (inCombat) {
     const strip = createEl('div', { class: 'combat-roster' });
     state.combat.turnOrder.forEach((id, idx) => {
       const a = state.roster.find(x => x.id === id);
@@ -330,34 +337,137 @@ export function renderActionBar(state, data, api) {
     bar.appendChild(strip);
   }
 
-  if (actor.abilities?.length) {
-    const strip = createEl('div', { class: 'ability-strip' });
-    actor.abilities.forEach(id => {
-      const ability = getById(data.abilities, id);
-      if (!ability) return;
-      const btn = createEl('button', { class: 'ability-chip' }, `${ability.name} [${ability.costType || 'action'}]`);
-      btn.addEventListener('click', () => api.setPendingAction({ type: 'ability', abilityId: id }));
-      strip.appendChild(btn);
-    });
-    bar.appendChild(strip);
+  // Build action list — costs one action
+  const actionList = [];
+  if (inCombat) {
+    actionList.push({ label: '⚔ Attack', desc: 'Weapon attack against an enemy in range.', fn: () => api.setPendingAction('attack') });
+    actionList.push({ label: '🏃 Dash', desc: 'Double your movement for this turn.', fn: () => {
+      state.combat.movementLeft[actor.id] = (state.combat.movementLeft[actor.id] ?? 0) + actor.moveRange;
+      state.combat.acted[actor.id] = true;
+      api.renderAll(); api.log?.(`${actor.name} dashes.`);
+    }});
+    actionList.push({ label: '🛡 Dodge', desc: 'Attacks against you have disadvantage until next turn.', fn: () => {
+      if (!actor.statuses.includes('dodging')) actor.statuses.push('dodging');
+      state.combat.acted[actor.id] = true;
+      api.renderAll(); api.log?.(`${actor.name} dodges.`);
+    }});
+    actionList.push({ label: '🤫 Hide', desc: 'Attempt to become stealthed (Agility check).', fn: () => {
+      const roll = Math.floor(Math.random()*20)+1;
+      const mod  = Math.floor((actor.stats.agility-10)/2) + actor.level;
+      if (roll+mod >= 13) {
+        if (!actor.statuses.includes('stealthed')) actor.statuses.push('stealthed');
+        api.log?.(`${actor.name} hides! (${roll}+${mod}=${roll+mod})`);
+      } else { api.log?.(`${actor.name} fails to hide. (${roll}+${mod}=${roll+mod})`); }
+      state.combat.acted[actor.id] = true; api.renderAll();
+    }});
+    actionList.push({ label: '🤝 Help', desc: 'Grant an ally advantage on their next action.', fn: () => {
+      state.combat.acted[actor.id] = true; api.renderAll(); api.log?.(`${actor.name} helps an ally.`);
+    }});
+  }
+  actionList.push({ label: '🏃 Move', desc: 'Move to any revealed tile.', fn: () => api.setPendingAction('move') });
+  actionList.push({ label: '💬 Talk', desc: 'Speak to an NPC within 5 tiles.', fn: () => api.setPendingAction('talk') });
+  actionList.push({ label: '🎒 Loot', desc: 'Loot a container within 5 tiles.', fn: () => api.setPendingAction('loot') });
+  if (!inCombat) {
+    actionList.push({ label: '🛌 Rest', desc: 'Long rest — restore HP and abilities. Needs rations + water.', fn: () => api.longRest() });
+    actionList.push({ label: '🔍 Inspect', desc: 'Inspect a nearby tile or object.', fn: () => api.setPendingAction('loot') });
+  }
+  // Actor abilities (action type)
+  (actor.abilities || []).forEach(abilityId => {
+    const ab = getById(data.abilities, abilityId);
+    if (!ab || ab.costType === 'bonus') return;
+    actionList.push({ label: `✨ ${ab.name}`, desc: ab.description, fn: () => api.setPendingAction({ type: 'ability', abilityId }) });
+  });
+
+  // Build bonus action list
+  const bonusList = [];
+  bonusList.push({ label: '🧪 Use Item', desc: 'Use a consumable from your inventory.', fn: () => { $('#inventoryPanel')?.classList.remove('hidden'); } });
+  if (inCombat) {
+    bonusList.push({ label: '🩹 Second Wind', desc: 'Regain 1d6+level HP (once per rest).', fn: () => {
+      if (actor._secondWindUsed) { api.log?.('Already used Second Wind this rest.'); return; }
+      const heal = Math.floor(Math.random()*6)+1+actor.level;
+      actor.hp = Math.min(actor.hpMax, actor.hp+heal);
+      actor._secondWindUsed = true;
+      state.combat.bonusActed[actor.id] = true;
+      api.renderAll(); api.log?.(`${actor.name} uses Second Wind — healed ${heal} HP.`);
+    }});
+    bonusList.push({ label: '⚡ Off-hand Strike', desc: 'Attack with your off-hand weapon if equipped.', fn: () => {
+      const off = getById(data.items, actor.equipped?.offhand);
+      if (!off) { api.log?.('No off-hand weapon.'); return; }
+      api.setPendingAction('attack');
+    }});
+  }
+  bonusList.push({ label: '👣 Sneak', desc: 'Slip into stealth.', fn: () => {
+    if (!actor.statuses.includes('stealthed')) actor.statuses.push('stealthed');
+    if (inCombat) state.combat.bonusActed[actor.id] = true;
+    api.renderAll(); api.log?.(`${actor.name} enters stealth.`);
+  }});
+  bonusList.push({ label: '🗣 Rally', desc: 'Inspire an ally with a shout.', fn: () => {
+    if (inCombat) state.combat.bonusActed[actor.id] = true;
+    api.renderAll(); api.log?.(`${actor.name} rallies the team.`);
+  }});
+  // Actor bonus abilities
+  (actor.abilities || []).forEach(abilityId => {
+    const ab = getById(data.abilities, abilityId);
+    if (!ab || ab.costType !== 'bonus') return;
+    bonusList.push({ label: `⚡ ${ab.name}`, desc: ab.description, fn: () => api.setPendingAction({ type: 'ability', abilityId }) });
+  });
+
+  // Render the row
+  const row = createEl('div', { class: 'action-row' });
+
+  // Action button
+  const actionBtn = createEl('button', {
+    class: `action-main-btn ${actionSpent ? 'action-spent' : ''}`
+  }, actionSpent ? '✓ Action Used' : '⚔ Action ▼');
+  actionBtn.addEventListener('click', e => {
+    if (inCombat && !isMyTurn) { api.log?.('Not your turn.'); return; }
+    _showActionDropdown(actionBtn, actionList, actionSpent);
+    e.stopPropagation();
+  });
+  row.appendChild(actionBtn);
+
+  // Bonus action button
+  const bonusBtn = createEl('button', {
+    class: `action-main-btn bonus-btn ${bonusSpent ? 'action-spent' : ''}`
+  }, bonusSpent ? '✓ Bonus Used' : '⚡ Bonus ▼');
+  bonusBtn.addEventListener('click', e => {
+    if (inCombat && !isMyTurn) { api.log?.('Not your turn.'); return; }
+    _showActionDropdown(bonusBtn, bonusList, bonusSpent);
+    e.stopPropagation();
+  });
+  row.appendChild(bonusBtn);
+
+  // Movement chip
+  if (inCombat) {
+    const movChip = createEl('div', { class: `action-chip ${movLeft > 0 ? '' : 'action-spent'}` });
+    movChip.innerHTML = `<span class="small">Move</span><strong>${movLeft}t</strong>`;
+    row.appendChild(movChip);
   }
 
-  if (!state.combat.active) {
-    const row = createEl('div', { class: 'row-wrap' });
-    const mk = (label, action) => {
-      const b = createEl('button', {}, label);
-      b.addEventListener('click', () => api.setPendingAction(action));
-      return b;
-    };
-    row.append(mk('Move', 'move'), mk('Talk', 'talk'), mk('Loot', 'loot'));
-    const restBtn = createEl('button', { class: 'secondary' }, 'Rest');
-    restBtn.addEventListener('click', () => api.longRest());
-    row.appendChild(restBtn);
+  if (!inCombat) {
     const followBtn = createEl('button', { class: 'secondary' }, `Follow: ${state.partyControl.follow ? 'ON' : 'OFF'}`);
     followBtn.addEventListener('click', () => api.toggleGroupFollow());
     row.appendChild(followBtn);
-    bar.appendChild(row);
   }
+
+  bar.appendChild(row);
+}
+
+function _showActionDropdown(anchorBtn, actions, spent) {
+  document.querySelectorAll('.action-dropdown').forEach(el => el.remove());
+  if (spent) return;
+  const dropdown = createEl('div', { class: 'action-dropdown' });
+  actions.forEach(({ label, desc, fn }) => {
+    const item = createEl('div', { class: 'action-dropdown-item' });
+    item.innerHTML = `<div><strong>${label}</strong></div><div class="small">${desc}</div>`;
+    item.addEventListener('click', e => { e.stopPropagation(); dropdown.remove(); fn(); });
+    dropdown.appendChild(item);
+  });
+  const rect = anchorBtn.getBoundingClientRect();
+  dropdown.style.cssText = `position:fixed;left:${Math.min(rect.left, window.innerWidth-290)}px;bottom:${window.innerHeight-rect.top+6}px;z-index:9999`;
+  document.body.appendChild(dropdown);
+  const close = (e) => { if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('pointerdown', close); } };
+  setTimeout(() => document.addEventListener('pointerdown', close), 0);
 }
 
 // ─── MESSAGES ─────────────────────────────────────────────────────────────────
@@ -467,6 +577,28 @@ let _invSort   = 'type';   // 'type' | 'newest' | 'value'
 let _invSearch = '';
 let _dragSlot  = null;     // which slot type we're dragging FROM (for equip highlight)
 
+// ─── CHARACTER MINI-DOLL ──────────────────────────────────────────────────────
+function renderMiniDoll(actor) {
+  const app = actor.appearance || {};
+  const skin   = app.skin   || '#b88e74';
+  const hair   = app.hair   || '#2f3d5a';
+  const eyes   = app.eyes   || '#93d7ff';
+  const accent = app.accent || '#d2a84b';
+  // For companions use their accent color as armor color
+  const armorColor = accent;
+
+  const doll = createEl('div', { class: 'inv-mini-doll' });
+  doll.innerHTML = `
+    <div class="inv-doll-layer inv-doll-body"   style="--skin:${skin}"></div>
+    <div class="inv-doll-layer inv-doll-armor"  style="--armorColor:${armorColor}"></div>
+    <div class="inv-doll-layer inv-doll-hair"   style="--hair:${hair}"></div>
+    <div class="inv-doll-layer inv-doll-accent" style="--eyes:${eyes}"></div>
+    <div class="inv-doll-name">${actor.name}</div>
+    <div class="inv-doll-class small">${actor.classId} · ${actor.speciesId}</div>
+  `;
+  return doll;
+}
+
 export function renderInventory(state, data, api) {
   const root = $('#inventoryBody');
   if (!root) return;
@@ -504,8 +636,8 @@ export function renderInventory(state, data, api) {
   const wrap = createEl('div', { class: 'inventory-columns' });
 
   // ─ Equipment column ─
-  const actorCol = createEl('div', { class: 'card' },
-    `<strong>${actor.name}</strong><div class="small">${actor.classId} · ${actor.speciesId}</div>`);
+  const actorCol = createEl('div', { class: 'card' });
+  actorCol.appendChild(renderMiniDoll(actor));
   const equipSlots = ['mainhand','offhand','armor','utility','implant','pack'];
   equipSlots.forEach(slot => {
     const itemId = actor.equipped?.[slot];
@@ -840,16 +972,93 @@ export function renderDialogue(state, data, api, nodeId, speakerActor) {
     </div>
   `;
   (node.choices || []).forEach(choice => {
-    const result = api.evaluateChoice(choice);
+    const hasCheck = !!choice.check;
+    // Show roll info but don't pre-determine outcome — player rolls
     let label = choice.label;
-    if (choice.check) label += ` [${choice.check.stat.toUpperCase()} DC ${choice.check.dc}]`;
-    const btn = createEl('button', {
-      class: `choice ${result.pass ? 'check-pass' : choice.check ? 'check-fail' : ''}`
-    }, label);
-    btn.disabled = !!(choice.check && !result.pass && !choice.failTarget);
+    if (hasCheck) {
+      const actor = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean)
+        .find(a => a.id === state.selectedActorId)
+        || state.roster.find(a => state.party.includes(a.id) && !a.dead);
+      const bonus = actor ? Math.floor((actor.stats[choice.check.stat] - 10) / 2) + actor.level + (choice.check.bonus || 0) : 0;
+      const bonusStr = bonus >= 0 ? `+${bonus}` : `${bonus}`;
+      label += ` [${choice.check.stat.toUpperCase()} DC ${choice.check.dc} · d20${bonusStr}]`;
+    }
+    const btn = createEl('button', { class: `choice ${hasCheck ? 'check-pending' : ''}` }, label);
     btn.addEventListener('pointerdown', e => e.stopPropagation());
-    btn.addEventListener('click', e => { e.stopPropagation(); api.resolveDialogueChoice(choice, result, speakerActor); });
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      if (hasCheck) {
+        _showDiceRoll(choice, state, data, api, speakerActor, root);
+      } else {
+        const result = api.evaluateChoice(choice);
+        api.resolveDialogueChoice(choice, result, speakerActor);
+      }
+    });
     root.appendChild(btn);
+  });
+}
+
+function _showDiceRoll(choice, state, data, api, speakerActor, dialogueRoot) {
+  const actor = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean)
+    .find(a => a.id === state.selectedActorId)
+    || state.roster.find(a => state.party.includes(a.id) && !a.dead);
+
+  const stat   = choice.check.stat;
+  const dc     = choice.check.dc;
+  const modVal = actor ? Math.floor((actor.stats[stat] - 10) / 2) + actor.level + (choice.check.bonus || 0) : 0;
+  const modStr = modVal >= 0 ? `+${modVal}` : `${modVal}`;
+  let rolling  = false;
+
+  const panel = createEl('div', { class: 'dice-panel' });
+  panel.innerHTML = `
+    <div class="dice-header">
+      <div class="dice-label">${choice.label}</div>
+      <div class="small">${stat.toUpperCase()} check · DC ${dc} · d20${modStr}</div>
+    </div>
+    <div class="dice-visual">
+      <div class="dice-face" id="diceFace">?</div>
+    </div>
+    <div id="diceResult" class="dice-result hidden"></div>
+    <div class="row-wrap" style="justify-content:center;margin-top:14px;gap:10px">
+      <button id="rollDiceBtn" class="action-main-btn">🎲 Roll</button>
+      <button id="cancelDiceBtn" class="secondary">← Back</button>
+    </div>
+  `;
+  dialogueRoot.appendChild(panel);
+
+  const face      = panel.querySelector('#diceFace');
+  const resultDiv = panel.querySelector('#diceResult');
+  panel.querySelector('#cancelDiceBtn').addEventListener('click', () => panel.remove());
+  panel.querySelector('#rollDiceBtn').addEventListener('click', () => {
+    if (rolling) return;
+    rolling = true;
+    const rollBtn = panel.querySelector('#rollDiceBtn');
+    rollBtn.disabled = true;
+    let ticks = 0;
+    const spin = setInterval(() => {
+      face.textContent = Math.floor(Math.random() * 20) + 1;
+      ticks++;
+      if (ticks > 16) {
+        clearInterval(spin);
+        const raw   = Math.floor(Math.random() * 20) + 1;
+        const total = raw + modVal;
+        const pass  = total >= dc;
+        face.textContent = raw;
+        face.className = `dice-face ${pass ? 'dice-pass' : 'dice-fail'}`;
+        resultDiv.classList.remove('hidden');
+        resultDiv.innerHTML = `
+          <div class="dice-total ${pass ? 'good' : 'danger-text'}">
+            ${raw} ${modVal !== 0 ? (modVal > 0 ? '+ ' : '− ') + Math.abs(modVal) + ' = ' : '= '}<strong>${total}</strong>
+            ${pass ? '✓ Success' : '✗ Failure'} vs DC ${dc}
+          </div>
+          <div class="small" style="margin-top:4px">${pass ? (choice.passText || 'The check succeeds.') : (choice.failText || 'The check fails.')}</div>
+        `;
+        setTimeout(() => {
+          panel.remove();
+          api.resolveDialogueChoice(choice, { pass, roll: raw, mod: modVal, total, rollText: `${raw}${modStr}=${total}` }, speakerActor);
+        }, 1800);
+      }
+    }, 75);
   });
 }
 

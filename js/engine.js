@@ -24,6 +24,7 @@ export class GameEngine {
     return {
       renderAll: () => this.renderAll(),
       renderCodex: () => renderCodex(),
+      log: msg => this.log(msg),
       currentMap: () => this.currentMap(),
       centerOnActor: actor => this.centerOnActor(actor),
       handleTileClick: (x, y, e) => this.handleTileClick(x, y, e),
