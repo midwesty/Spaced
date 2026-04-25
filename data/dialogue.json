@@ -3749,6 +3749,97 @@
      "closeDialogue": true
     }
    ]
+  },
+  "node_1777145691576": {
+   "speaker": "boobo",
+   "text": "Sorry I hid here! Please don't hurt Boobo! ",
+   "choices": [
+    {
+     "label": "Who or what are you?",
+     "target": "node_1777146247891"
+    },
+    {
+     "label": "No dice, you good for nothin' stowaway-freak!",
+     "target": "node_1777146497340"
+    },
+    {
+     "label": "Why don't you join me? I could use a... uh... whatever you are on the crew.",
+     "target": "node_1777146587777",
+     "effects": {
+      "joinParty": true,
+      "resource": {
+       "credits": 20
+      },
+      "affinity": 1
+     },
+     "check": {
+      "stat": "presence",
+      "dc": 3,
+      "bonus": 0
+     }
+    }
+   ]
+  },
+  "node_1777146247891": {
+   "speaker": "Boobo",
+   "text": "Oh great, one of those zenophobe-types. I'm a Mutoid! I'm only a product of what society did to me! Also massive amounts of radiation...",
+   "choices": [
+    {
+     "label": "Gross...",
+     "target": "node_1777146497340"
+    },
+    {
+     "label": "Hey, we don't judge like that here.",
+     "target": "node_1777146913555"
+    }
+   ]
+  },
+  "node_1777146497340": {
+   "speaker": "Boobo",
+   "text": "Please, just leave me be, then. I'll get off at the next port and won't be no bother. I won't fight back if you wanna get violent. ",
+   "choices": [
+    {
+     "label": "Continue",
+     "target": null
+    }
+   ]
+  },
+  "node_1777146587777": {
+   "speaker": "Boobo",
+   "text": "R...really? Thank you! I'll be a good, Boobo! Best Boobo for you!",
+   "choices": [
+    {
+     "label": "Continue",
+     "target": null,
+     "effects": {
+      "joinParty": true
+     }
+    }
+   ]
+  },
+  "node_1777146913555": {
+   "speaker": "Boobo",
+   "text": "Oh... I'm so sorry. You just hear it all the time when you're a Mutoid in this verse, and I guess I jumped to conclusions. I didn't mean to put you in a box and assume... Boobo, sorry!",
+   "choices": [
+    {
+     "label": "It's okay. To show there is no hard feelings, you can stowaway in our ship as long as you need. ",
+     "target": "node_1777146497340",
+     "effects": {
+      "affinity": 5
+     }
+    },
+    {
+     "label": "Yeah well, if you wanted my respect you shouldn't have been born a disgusting mutant weirdo. ",
+     "target": "node_1777146497340",
+     "effects": {
+      "affinity": -10
+     }
+    },
+    {
+     "label": "You know, I'm pretty alone in this verse too, and it sucks. Wanna join my crew, Boobo? You could, I don't know, be our chef or something...",
+     "target": "node_1777146587777"
+    }
+   ]
   }
  }
 }
