@@ -84,5 +84,13 @@
   "description": "Character can't see and has disadvantage.",
   "duration": 3,
   "stackable": false
+ },
+ {
+  "id": "bloated",
+  "name": "Bloated",
+  "category": "debuff",
+  "description": "Bloated to the point of discomfort leading to encumberment and disadvantage on save throws. ",
+  "duration": 3,
+  "stackable": true
  }
 ]
