@@ -136,8 +136,8 @@
    "implant": null,
    "pack": null
   },
-  "bio": "",
-  "dialogueId": "",
+  "bio": "A mutant who's people fell victim to radioactive fallout somewhere in the verse. Loyal, but skiddish.",
+  "dialogueId": "node_1777145691576",
   "appearance": {
    "skin": "#b88e74",
    "hair": "#2f3d5a",
