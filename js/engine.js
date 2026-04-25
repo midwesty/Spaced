@@ -800,7 +800,6 @@ populateCreator() {
   walkPath(actor, steps, stepIdx) {
     if (stepIdx >= steps.length) {
       this.moving = false;
-      // Final tile triggers
       const last = steps[steps.length - 1];
       this.resolveTileTriggers(actor, last.x, last.y);
       if (!this.state.combat.active && this.state.party.includes(actor.id) && this.state.partyControl.follow) {
@@ -817,12 +816,10 @@ populateCreator() {
     const { x, y } = steps[stepIdx];
     actor.x = x; actor.y = y;
 
-    // In combat, deduct movement per step
     if (this.state.combat.active) {
       this.state.combat.movementLeft[actor.id] = Math.max(0, (this.state.combat.movementLeft[actor.id] ?? actor.moveRange) - 1);
     }
 
-    // Animate the entity element
     const size = this.data.config.map.tileSize;
     const entEl = document.querySelector(`#entityLayer .entity[data-actorid="${actor.id}"]`);
     if (entEl) {
@@ -830,12 +827,31 @@ populateCreator() {
       entEl.style.left = `${x * size}px`;
       entEl.style.top  = `${y * size}px`;
     }
-    // Reveal fog incrementally
+
     if (this.state.party.includes(actor.id)) this.revealFog();
 
-    // Re-render to update fog tiles as we walk
-    this.renderAll();
+    // Check encounter tile on EVERY step (not just the last)
+    const tile = this.currentMap().tiles[y]?.[x];
+    if (tile?.encounter && !this.state.combat.active) {
+      const encId = tile.encounter;
+      tile.encounter = null;
+      this.moving = false;
+      this.pendingAction = null;
+      this.renderAll();
+      this.startEncounter(encId);
+      return; // stop walking, combat takes over
+    }
 
+    // Check transition on every step too
+    if (tile?.transition) {
+      this.moving = false;
+      this.pendingAction = null;
+      this.renderAll();
+      this.resolveTileTriggers(actor, x, y);
+      return;
+    }
+
+    this.renderAll();
     setTimeout(() => this.walkPath(actor, steps, stepIdx + 1), 140);
   }
 
@@ -1351,14 +1367,52 @@ attack(attacker, target, ability = null) {
       this.log(`It is not ${attacker.name}'s turn.`);
       return;
     }
-    // Enforce action economy — each actor only gets one action per turn
+    // Enforce action economy
     const costType = ability?.costType || 'action';
     const costCheck = this.canSpendCost(attacker, costType, ability);
     if (!costCheck.ok) {
       this.log(costCheck.reason);
       return;
     }
-    const weapon = getById(this.data.items, attacker.equipped.mainhand);
+
+    // If target is neutral or ally (not already enemy), make them hostile
+    if (target.role !== 'enemy') {
+      target.role = 'enemy';
+      target.ai = 'aggressive';
+      this.raiseCrime('assault');
+      this.log(`${target.name} turns hostile!`);
+      // If combat not yet active, start it now so they fight back
+      if (!this.state.combat.active) {
+        const weapon2 = getById(this.data.items, attacker.equipped?.mainhand);
+        const attackBonus2 = statMod(attacker.stats.agility) + attacker.level + (weapon2?.attackBonus || 0) + (ability?.attackBonus || 0);
+        const roll2 = rollDice('1d20');
+        const crit2 = roll2.rolls[0] === 20;
+        const hit2 = crit2 || (roll2.total + attackBonus2) >= target.armor;
+        this.log(`${attacker.name} attacks ${target.name}: ${roll2.rolls[0]} + ${attackBonus2} vs AC ${target.armor}.`);
+        attacker.statuses = attacker.statuses.filter(s => s !== 'stealthed');
+        this.flashActor(attacker.id, 'entity-acting', 400);
+        if (hit2) {
+          const baseExpr2 = ability?.damage || weapon2?.damage || '1d6';
+          const dmgRoll2 = rollDice(baseExpr2);
+          let dmg2 = dmgRoll2.total + statMod(attacker.stats.might);
+          if (crit2) dmg2 += dmgRoll2.total;
+          if (target.shield > 0) { const abs = Math.min(target.shield, dmg2); target.shield -= abs; dmg2 -= abs; }
+          if (dmg2 > 0) target.hp -= dmg2;
+          this.flashActor(target.id, 'entity-hit', 500);
+          this.log(`${target.name} takes ${Math.max(dmg2,0)} damage${crit2 ? ' (CRIT)' : ''}.`);
+          if (ability?.applyStatus && !target.statuses.includes(ability.applyStatus)) target.statuses.push(ability.applyStatus);
+          this.handleDeathState(target);
+        } else { this.log(`${attacker.name} misses.`); }
+        this.consumeAction(attacker, ability?.costType || 'action');
+        this.startCombat();
+        this.advanceTime(1);
+        this.pendingAction = null;
+        this.renderAll();
+        return;
+      }
+    }
+
+    const weapon = getById(this.data.items, attacker.equipped?.mainhand);
     const attackBonus = statMod(attacker.stats.agility) + attacker.level + (weapon?.attackBonus || 0) + (ability?.attackBonus || 0);
     const roll = rollDice('1d20');
     const crit = roll.rolls[0] === 20;
@@ -1415,8 +1469,38 @@ attack(attacker, target, ability = null) {
     }
     actor.dead = true;
     actor.downed = false;
-    this.log(`${actor.name} dies.`);
-    if (this.state.party.includes(actor.id)) this.state.party = this.state.party.filter(id => id !== actor.id);
+    this.log(`${actor.name} is lost.`);
+
+    // Drop loot on their tile
+    if (actor.role === 'enemy' || actor.role === 'neutral') {
+      const map = this.currentMap();
+      const tile = map?.tiles[actor.y]?.[actor.x];
+      if (tile) {
+        tile.loot = true;
+        if (!Array.isArray(tile.lootTable)) tile.lootTable = [];
+        (actor.inventory || []).forEach(entry => tile.lootTable.push(deepClone(entry)));
+        if (actor.equipped?.mainhand) tile.lootTable.push({ itemId: actor.equipped.mainhand, qty: 1 });
+        if (actor.equipped?.armor && Math.random() > 0.5) tile.lootTable.push({ itemId: actor.equipped.armor, qty: 1 });
+        tile.lootTable.push({ itemId: 'credits_chit', qty: rand(2, 18) });
+        tile.containerName = `${actor.name}'s remains`;
+        this.log(`${actor.name} drops loot.`);
+      }
+    }
+
+    if (this.state.party.includes(actor.id)) {
+      this.state.party = this.state.party.filter(id => id !== actor.id);
+    }
+
+    // Hero respawns on ship
+    if (actor.id === 'hero' || actor.templateId === 'hero') {
+      actor.dead = false; actor.downed = false; actor.hp = 1;
+      actor.mapId = 'wake_interior';
+      const safe = this.findFreeTileNear('wake_interior', 3, 8, actor.id, 4) || { x: 3, y: 8 };
+      actor.x = safe.x; actor.y = safe.y;
+      if (!this.state.party.includes(actor.id)) this.state.party.unshift(actor.id);
+      this.state.selectedActorId = actor.id;
+      this.log('You wake up on the ship, barely alive.');
+    }
   }
 
   startCombat() {
@@ -1577,23 +1661,39 @@ attack(attacker, target, ability = null) {
   tickSurvival(minutes) {
     const party = this.state.party.map(id => this.state.roster.find(a => a.id === id)).filter(Boolean);
     party.forEach(actor => {
-      actor.survival.hunger = clamp(actor.survival.hunger - (minutes / 24), 0, 100);
-      actor.survival.thirst = clamp(actor.survival.thirst - (minutes / 18), 0, 100);
-      actor.survival.fatigue = clamp(actor.survival.fatigue - (minutes / 32), 0, 100);
-      actor.survival.morale = clamp(actor.survival.morale - (minutes / 180), 0, 100);
-      if (actor.survival.hunger <= 0) actor.hp -= Math.max(1, Math.floor(minutes / 30));
-      if (actor.survival.thirst <= 0) actor.hp -= Math.max(1, Math.floor(minutes / 20));
-      if (actor.survival.fatigue <= 0) actor.hp -= Math.max(1, Math.floor(minutes / 45));
-      this.handleDeathState(actor);
+      // Drain survival stats
+      actor.survival.hunger  = clamp(actor.survival.hunger  - (minutes / 120), 0, 100);
+      actor.survival.thirst  = clamp(actor.survival.thirst  - (minutes / 90),  0, 100);
+      actor.survival.fatigue = clamp(actor.survival.fatigue - (minutes / 180), 0, 100);
+      actor.survival.morale  = clamp(actor.survival.morale  - (minutes / 360), 0, 100);
+
+      // Only take HP damage when critically deprived (below 5, not just 0)
+      // and only in meaningful chunks — prevent death-by-tickloop
+      if (actor.survival.hunger < 5 && minutes >= 60) {
+        actor.hp -= 1;
+        this.log(`${actor.name} is starving.`);
+      }
+      if (actor.survival.thirst < 5 && minutes >= 60) {
+        actor.hp -= 1;
+        this.log(`${actor.name} is severely dehydrated.`);
+      }
+      // Fatigue does NOT deal HP damage directly — it only affects morale
+      // (prevents the silent 10-minute death bug)
+      if (actor.survival.fatigue < 5) {
+        actor.survival.morale = clamp(actor.survival.morale - 5, 0, 100);
+      }
+      if (actor.hp <= 0) this.handleDeathState(actor);
     });
+
+    // Consume ship rations/water over time (once per hour of in-game time)
     if (minutes >= 60) {
       if (this.state.resources.rations > 0) {
         this.state.resources.rations = Math.max(0, this.state.resources.rations - 1);
-        party.forEach(a => a.survival.hunger = clamp(a.survival.hunger + 18, 0, 100));
+        party.forEach(a => { a.survival.hunger = clamp(a.survival.hunger + 20, 0, 100); });
       }
       if (this.state.resources.water > 0) {
         this.state.resources.water = Math.max(0, this.state.resources.water - 1);
-        party.forEach(a => a.survival.thirst = clamp(a.survival.thirst + 18, 0, 100));
+        party.forEach(a => { a.survival.thirst = clamp(a.survival.thirst + 20, 0, 100); });
       }
     }
   }
