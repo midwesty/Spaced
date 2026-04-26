@@ -55,7 +55,6 @@ export class GameEngine {
       inspectInventoryItem: (actorId, idx, x, y, forceContext = false) => this.inspectInventoryItem(actorId, idx, x, y, forceContext),
       handleInventoryDrop: (e, actorId, idx) => this.handleInventoryDrop(e, actorId, idx),
       inspectCargoItem: idx => this.inspectCargoItem(idx),
-      sendItemToActor: (srcId, idx, destId) => this.sendItemToActor(srcId, idx, destId),
       travelToSector: id => this.travelToSector(id),
       adminHealParty: () => this.adminHealParty(),
       adminFeedParty: () => this.adminFeedParty(),
@@ -688,7 +687,7 @@ populateCreator() {
     // No pending action — check what's on the tile and show options
     const tile = this.currentMap().tiles[y]?.[x];
     if (!tile) return;
-    const actorOnTile = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y && !a.dead);
+    const actorOnTile = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === x && a.y === y);
     const inRange = this.isInRange(actor, x, y, 5);
     const options = [];
 
@@ -914,10 +913,6 @@ populateCreator() {
       requestAnimationFrame(() => this.fitViewportToScreen(true));
     }
     if (tile.discoveryFlag) this.state.flags[tile.discoveryFlag] = true;
-    if (tile.transition) {
-      // Always reveal fog after a map transition
-      this.revealFog();
-    }
     if (tile.loot) this.inspectTile(x, y);
     if (tile.encounter && !this.state.combat.active) {
       const encounterId = tile.encounter;
@@ -1181,14 +1176,7 @@ interactWithActor(id) {
     if (!entry || !item) return;
 
     if (forceContext) {
-      const otherParty = this.state.party
-        .map(id => this.state.roster.find(a => a.id === id))
-        .filter(a => a && !a.dead && a.id !== actor.id);
-      const opts = [
-        ['→ Ship Cargo', () => this.sendItemToCargo(actor, idx)],
-        ...otherParty.map(a => [`→ ${a.name}`, () => this.sendItemToActor(actor.id, idx, a.id)]),
-        ['Drop', () => this.dropItem(actor, idx)]
-      ];
+      const opts = [['Send to Cargo', () => this.sendItemToCargo(actor, idx)], ['Drop', () => this.dropItem(actor, idx)]];
       if (item.type === 'consumable') opts.unshift(['Use', () => this.useItem(actor, idx)]);
       if (item.slot) opts.unshift(['Equip', () => this.equipItem(actor, idx)]);
       if (item.type === 'container') opts.push(['Rename Container', () => this.renameItemStack(actor, idx)]);
@@ -1210,15 +1198,6 @@ interactWithActor(id) {
     const btnEquip  = isEquippable ? `<button id="invEquipBtn">Equip → ${item.slot}</button>` : '';
     const btnRename = isContainer  ? `<button id="invRenameBtn">Rename</button>` : '';
 
-    // Build "Send To" options: cargo + each other party member
-    const otherParty = this.state.party
-      .map(id => this.state.roster.find(a => a.id === id))
-      .filter(a => a && !a.dead && a.id !== actor.id);
-    const sendToOptions = [
-      `<option value="cargo">Ship Cargo</option>`,
-      ...otherParty.map(a => `<option value="${a.id}">${a.name}</option>`)
-    ].join('');
-
     renderInspect(this.state, this.data, `
       <div class="card">
         <strong>${entry.customName || item.name}</strong>
@@ -1227,11 +1206,7 @@ interactWithActor(id) {
         ${statsHtml}
         <div class="row-wrap" style="margin-top:10px">
           ${btnUse}${btnEquip}
-          <div class="send-to-wrap">
-            <span class="small" style="margin-right:4px">Send To:</span>
-            <select id="invSendToSel">${sendToOptions}</select>
-            <button id="invSendToBtn">→</button>
-          </div>
+          <button id="invCargoBtn">→ Cargo</button>
           ${btnRename}
           <button id="invDropBtn" class="danger">Drop</button>
         </div>
@@ -1241,14 +1216,7 @@ interactWithActor(id) {
     if (isConsumable) $('#invUseBtn').onclick   = () => this.useItem(actor, idx);
     if (isEquippable) $('#invEquipBtn').onclick  = () => this.equipItem(actor, idx);
     if (isContainer)  $('#invRenameBtn').onclick = () => this.renameItemStack(actor, idx);
-    $('#invSendToBtn').onclick = () => {
-      const dest = document.getElementById('invSendToSel')?.value;
-      if (dest === 'cargo') {
-        this.sendItemToCargo(actor, idx);
-      } else if (dest) {
-        this.sendItemToActor(actor.id, idx, dest);
-      }
-    };
+    $('#invCargoBtn').onclick = () => this.sendItemToCargo(actor, idx);
     $('#invDropBtn').onclick  = () => this.dropItem(actor, idx);
   }
 
@@ -1349,18 +1317,6 @@ sendItemToCargo(actor, idx) {
     if (!entry) return;
     this.state.ship.cargo.push(entry);
     this.log(`${entry.itemId} sent to ship cargo.`);
-    this.renderAll();
-  }
-
-  sendItemToActor(srcId, idx, destId) {
-    const src  = this.state.roster.find(a => a.id === srcId);
-    const dest = this.state.roster.find(a => a.id === destId);
-    if (!src || !dest) return;
-    const [entry] = src.inventory.splice(idx, 1);
-    if (!entry) return;
-    dest.inventory.push(entry);
-    const itemName = entry.customName || entry.itemId;
-    this.log(`${entry.itemId} sent from ${src.name} to ${dest.name}.`);
     this.renderAll();
   }
 
@@ -1559,11 +1515,7 @@ attack(attacker, target, ability = null) {
     this.state.combat.bonusActed = {};
     this.state.combat.reactionSpent = {};
     this.state.combat.aiActingId = null;
-    // Never auto-select an enemy — keep the current party member or pick first living one
-    const firstPartyTurn = this.state.combat.turnOrder.find(id => this.state.party.includes(id));
-    if (!this.state.party.includes(this.state.selectedActorId)) {
-      this.state.selectedActorId = firstPartyTurn || this.state.party[0] || this.state.selectedActorId;
-    }
+    this.state.selectedActorId = this.state.combat.turnOrder[0];
     this.log('Combat begins.');
     this.renderAll();
   }
@@ -1630,14 +1582,6 @@ attack(attacker, target, ability = null) {
     }
 
     this.state.selectedActorId = nextId;
-    // Never let selectedActorId be an enemy — always keep a party member selected
-    if (!this.state.party.includes(nextId)) {
-      const partyMember = this.state.party.find(id => {
-        const a = this.state.roster.find(x => x.id === id);
-        return a && !a.dead;
-      });
-      if (partyMember) this.state.selectedActorId = partyMember;
-    }
     this.pendingAction = null;
     // Don't auto-center — player controls camera
 
@@ -1668,24 +1612,6 @@ attack(attacker, target, ability = null) {
     this.state.combat.active = false;
     this.state.combat.aiActingId = null;
     this.log('Combat ends.');
-    // Revive downed party members with 1 HP
-    this.state.party.forEach(id => {
-      const actor = this.state.roster.find(a => a.id === id);
-      if (actor && actor.downed && !actor.dead) {
-        actor.downed = false;
-        actor.hp = 1;
-        this.log(`${actor.name} stabilises with 1 HP.`);
-      }
-    });
-    // Ensure selectedActorId is always a living party member after combat
-    const sel = this.state.roster.find(a => a.id === this.state.selectedActorId);
-    if (!sel || !this.state.party.includes(sel.id) || sel.dead) {
-      const first = this.state.party.find(id => {
-        const a = this.state.roster.find(x => x.id === id);
-        return a && !a.dead;
-      });
-      if (first) this.state.selectedActorId = first;
-    }
     this.renderAll();
   }
 
@@ -1970,13 +1896,8 @@ attack(attacker, target, ability = null) {
 
   isTileRevealed(x, y) {
     const mapId = this.state.mapId;
-    // Interior maps are never fogged — they are small enough to see entirely
-    const interiorMaps = ['wake_interior', 'wake_hold', 'port_sable_jail', 'port_sable_vents',
-      'port_sable_derelicts', 'glassreef_archive'];
-    if (interiorMaps.includes(mapId)) return true;
-    // Also auto-reveal any map whose name contains these keywords
-    if (mapId.includes('interior') || mapId.includes('hold') || mapId.includes('jail') ||
-        mapId.includes('vent') || mapId.includes('archive') || mapId.includes('cabin')) return true;
+    // Ship interior and wake_hold never fogged
+    if (mapId === 'wake_interior' || mapId === 'wake_hold') return true;
     return !!(this.state.fogRevealed?.[mapId]?.[`${x},${y}`]);
   }
 

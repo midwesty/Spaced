@@ -576,7 +576,6 @@ const ITEM_TYPE_CLASS = {
 let _invSort   = 'type';   // 'type' | 'newest' | 'value'
 let _invSearch = '';
 let _dragSlot  = null;     // which slot type we're dragging FROM (for equip highlight)
-let _invTab    = 'player'; // 'player' | 'party' | 'ship'
 
 // ─── CHARACTER MINI-DOLL ──────────────────────────────────────────────────────
 function renderMiniDoll(actor) {
@@ -585,6 +584,7 @@ function renderMiniDoll(actor) {
   const hair   = app.hair   || '#2f3d5a';
   const eyes   = app.eyes   || '#93d7ff';
   const accent = app.accent || '#d2a84b';
+  // For companions use their accent color as armor color
   const armorColor = accent;
 
   const doll = createEl('div', { class: 'inv-mini-doll' });
@@ -599,8 +599,43 @@ function renderMiniDoll(actor) {
   return doll;
 }
 
-function renderInvBag(actor, state, data, api, showCargo = false) {
-  // Equipment column
+export function renderInventory(state, data, api) {
+  const root = $('#inventoryBody');
+  if (!root) return;
+  root.innerHTML = '';
+
+  const actor = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean)
+    .find(a => a.id === state.selectedActorId)
+    || state.roster.find(a => state.party.includes(a.id) && !a.dead);
+
+  if (!actor) {
+    root.innerHTML = '<div class="card"><div class="small">No party member selected.</div></div>';
+    return;
+  }
+
+  // ── Toolbar: search + sort ──
+  const toolbar = createEl('div', { class: 'inv-toolbar' });
+  const searchInput = createEl('input', { class: 'inv-search' });
+  searchInput.type        = 'text';
+  searchInput.placeholder = 'Search items…';
+  searchInput.value       = _invSearch;
+  searchInput.addEventListener('input', e => { _invSearch = e.target.value; renderInventory(state, data, api); });
+
+  const sortSel = createEl('select', { class: 'inv-sort' });
+  [['type','By Type'],['newest','Newest'],['value','By Value']].forEach(([v,l]) => {
+    const opt = createEl('option', {}, l);
+    opt.value = v;
+    if (_invSort === v) opt.selected = true;
+    sortSel.appendChild(opt);
+  });
+  sortSel.addEventListener('change', e => { _invSort = e.target.value; renderInventory(state, data, api); });
+  toolbar.append(searchInput, sortSel);
+  root.appendChild(toolbar);
+
+  // ── Layout columns ──
+  const wrap = createEl('div', { class: 'inventory-columns' });
+
+  // ─ Equipment column ─
   const actorCol = createEl('div', { class: 'card' });
   actorCol.appendChild(renderMiniDoll(actor));
   const equipSlots = ['mainhand','offhand','armor','utility','implant','pack'];
@@ -611,6 +646,7 @@ function renderInvBag(actor, state, data, api, showCargo = false) {
     const div = createEl('div', { class: `equip-slot ${typeCls} ${_dragSlot === slot ? 'equip-slot-highlight' : ''}` });
     div.innerHTML = `<div class="small">${slot}</div><div>${item?.name || '<span class="muted">Empty</span>'}</div>`;
     div.addEventListener('click', () => api.inspectEquipmentSlot(actor.id, slot));
+    // Accept drops
     div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('equip-slot-highlight'); });
     div.addEventListener('dragleave', () => div.classList.remove('equip-slot-highlight'));
     div.addEventListener('drop', e => {
@@ -622,20 +658,25 @@ function renderInvBag(actor, state, data, api, showCargo = false) {
         if (!srcActor) return;
         const entry = srcActor.inventory[payload.idx];
         const dragItem = entry ? getById(data.items, entry.itemId) : null;
-        if (dragItem?.slot === slot) api.equipItem(srcActor, payload.idx);
+        if (dragItem?.slot === slot) {
+          api.equipItem(srcActor, payload.idx);
+        }
       } catch { /* ignore */ }
     });
     actorCol.appendChild(div);
   });
 
-  // Inventory bag column
+  // ─ Inventory bag column ─
   const bagCol = createEl('div', { class: 'card' }, '<strong>Carried Items</strong>');
+
+  // Filter + sort inventory
   let inventory = (actor.inventory || []).map((entry, origIdx) => ({ entry, origIdx }));
   if (_invSearch.trim()) {
     const q = _invSearch.toLowerCase();
     inventory = inventory.filter(({ entry }) => {
       const item = getById(data.items, entry.itemId);
-      return (item?.name || entry.itemId).toLowerCase().includes(q) || (item?.type || '').toLowerCase().includes(q);
+      return (item?.name || entry.itemId).toLowerCase().includes(q)
+        || (item?.type || '').toLowerCase().includes(q);
     });
   }
   if (_invSort === 'type') {
@@ -647,14 +688,18 @@ function renderInvBag(actor, state, data, api, showCargo = false) {
   } else if (_invSort === 'value') {
     inventory.sort((a, b) => {
       const ia = getById(data.items, a.entry.itemId), ib = getById(data.items, b.entry.itemId);
-      return ((ib?.sellValue || 10) - (ia?.sellValue || 10));
+      const va = ia?.sellValue || (ia?.rarity === 'rare' ? 80 : 10);
+      const vb = ib?.sellValue || (ib?.rarity === 'rare' ? 80 : 10);
+      return vb - va;
     });
   }
+  // 'newest' keeps insertion order (origIdx already preserved)
+
   const grid = createEl('div', { class: 'slot-grid' });
   inventory.forEach(({ entry, origIdx }) => {
     const item    = getById(data.items, entry.itemId);
     const typeCls = ITEM_TYPE_CLASS[item?.type] || 'item-type-misc';
-    const slot = createEl('div', { class: 'slot' });
+    const slot = createEl('div', { class: `slot` });
     slot.innerHTML = `<div class="item ${typeCls}">
       <strong>${entry.customName || item?.name || entry.itemId}</strong>
       <div class="meta">${item?.type || 'item'} x${entry.qty}</div>
@@ -664,170 +709,41 @@ function renderInvBag(actor, state, data, api, showCargo = false) {
     slot.addEventListener('dragstart', e => {
       _dragSlot = item?.slot || null;
       e.dataTransfer.setData('text/plain', JSON.stringify({ actorId: actor.id, idx: origIdx }));
+      // Re-render to highlight valid equip slots
       setTimeout(() => renderInventory(state, data, api), 0);
     });
     slot.addEventListener('dragend', () => { _dragSlot = null; renderInventory(state, data, api); });
     slot.addEventListener('dragover', e => e.preventDefault());
-    slot.addEventListener('drop', e => api.handleInventoryDrop(e, actor.id, origIdx));
+    slot.addEventListener('drop',     e => api.handleInventoryDrop(e, actor.id, origIdx));
     grid.appendChild(slot);
   });
+  // Empty slots to pad to 20
   for (let i = inventory.length; i < 20; i++) {
     const slot = createEl('div', { class: 'slot' }, '<span class="small">—</span>');
     slot.addEventListener('dragover', e => e.preventDefault());
-    slot.addEventListener('drop', e => api.handleInventoryDrop(e, actor.id, actor.inventory.length));
+    slot.addEventListener('drop',     e => api.handleInventoryDrop(e, actor.id, actor.inventory.length));
     grid.appendChild(slot);
   }
   bagCol.appendChild(grid);
-  return [actorCol, bagCol];
-}
 
-export function renderInventory(state, data, api) {
-  const root = $('#inventoryBody');
-  if (!root) return;
-  root.innerHTML = '';
-
-  // ── Tab bar ──
-  const tabBar = createEl('div', { class: 'inv-tab-bar' });
-  [['player','Player'],['party','Party'],['ship','Ship Cargo']].forEach(([id, label]) => {
-    const btn = createEl('button', { class: `inv-tab-btn ${_invTab === id ? 'active' : ''}` }, label);
-    btn.addEventListener('click', () => { _invTab = id; renderInventory(state, data, api); });
-    tabBar.appendChild(btn);
+  // ─ Ship cargo column ─
+  const stashCol  = createEl('div', { class: 'card' }, '<strong>Ship Cargo</strong><div class="small">Shared storage.</div>');
+  const stashGrid = createEl('div', { class: 'slot-grid' });
+  (state.ship.cargo || []).forEach((entry, idx) => {
+    const item    = getById(data.items, entry.itemId);
+    const typeCls = ITEM_TYPE_CLASS[item?.type] || 'item-type-misc';
+    const slot = createEl('div', { class: 'slot' });
+    slot.innerHTML = `<div class="item ${typeCls}"><strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div></div>`;
+    slot.addEventListener('click', () => api.inspectCargoItem(idx));
+    stashGrid.appendChild(slot);
   });
-  root.appendChild(tabBar);
-
-  // ── Toolbar: search + sort (shown for player/party tabs) ──
-  if (_invTab !== 'ship') {
-    const toolbar = createEl('div', { class: 'inv-toolbar' });
-    const searchInput = createEl('input', { class: 'inv-search' });
-    searchInput.type        = 'text';
-    searchInput.placeholder = 'Search items…';
-    searchInput.value       = _invSearch;
-    searchInput.addEventListener('input', e => { _invSearch = e.target.value; renderInventory(state, data, api); });
-    const sortSel = createEl('select', { class: 'inv-sort' });
-    [['type','By Type'],['newest','Newest'],['value','By Value']].forEach(([v,l]) => {
-      const opt = createEl('option', {}, l);
-      opt.value = v;
-      if (_invSort === v) opt.selected = true;
-      sortSel.appendChild(opt);
-    });
-    sortSel.addEventListener('change', e => { _invSort = e.target.value; renderInventory(state, data, api); });
-    toolbar.append(searchInput, sortSel);
-    root.appendChild(toolbar);
+  for (let i = (state.ship.cargo||[]).length; i < 15; i++) {
+    stashGrid.appendChild(createEl('div', { class: 'slot' }, '<span class="small">—</span>'));
   }
+  stashCol.appendChild(stashGrid);
 
-  const wrap = createEl('div', { class: 'inventory-columns' });
-
-  // ── PLAYER TAB ──
-  if (_invTab === 'player') {
-    const actor = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean)
-      .find(a => a.id === state.selectedActorId)
-      || state.roster.find(a => state.party.includes(a.id) && !a.dead);
-    if (!actor) {
-      root.appendChild(createEl('div', { class: 'card' }, '<div class="small">No party member selected.</div>'));
-      return;
-    }
-    const [eqCol, bagCol] = renderInvBag(actor, state, data, api);
-    wrap.append(eqCol, bagCol);
-    root.appendChild(wrap);
-    return;
-  }
-
-  // ── PARTY TAB ──
-  if (_invTab === 'party') {
-    const activeParty = state.party.map(id => state.roster.find(a => a.id === id)).filter(Boolean);
-    const otherCompanions = state.roster.filter(a =>
-      !state.party.includes(a.id) && (a.role === 'ally' || a.templateId) && !a.dead &&
-      a.role !== 'enemy' && a.role !== 'neutral'
-    );
-
-    if (!activeParty.length) {
-      root.appendChild(createEl('div', { class: 'card' }, '<div class="small">No active party members.</div>'));
-      return;
-    }
-
-    // Show each party member's inventory as a collapsible section
-    activeParty.forEach(actor => {
-      const section = createEl('div', { class: 'card', style: 'margin-bottom:12px' });
-      const sectionHeader = createEl('div', { class: 'row', style: 'margin-bottom:8px;cursor:pointer' });
-      const hpPct = Math.max(0, (actor.hp / actor.hpMax) * 100);
-      const hpColor = actor.downed ? '#555' : hpPct > 50 ? '#86dfa3' : hpPct > 25 ? '#ffcc6b' : '#ff6e6e';
-      sectionHeader.innerHTML = `
-        <strong>${actor.name}</strong>
-        <span class="small">${actor.classId} · ${actor.speciesId} · HP ${actor.hp}/${actor.hpMax}</span>
-        <div class="bar" style="flex:1;margin:0 8px"><div class="fill" style="width:${hpPct}%;background:${hpColor}"></div></div>
-        <span class="small">${actor.inventory?.length || 0} items</span>
-      `;
-      section.appendChild(sectionHeader);
-
-      // Mini inventory grid for this party member
-      const miniGrid = createEl('div', { class: 'slot-grid' });
-      (actor.inventory || []).forEach((entry, origIdx) => {
-        const item    = getById(data.items, entry.itemId);
-        const typeCls = ITEM_TYPE_CLASS[item?.type] || 'item-type-misc';
-        const slot = createEl('div', { class: 'slot' });
-        slot.innerHTML = `<div class="item ${typeCls}">
-          <strong>${entry.customName || item?.name || entry.itemId}</strong>
-          <div class="meta">${item?.type || 'item'} x${entry.qty}</div>
-        </div>`;
-        slot.addEventListener('click', e => {
-          // Switch to player tab on this actor first, then inspect
-          state.selectedActorId = actor.id;
-          api.inspectInventoryItem(actor.id, origIdx, e.clientX, e.clientY);
-        });
-        miniGrid.appendChild(slot);
-      });
-      if (!(actor.inventory || []).length) {
-        miniGrid.appendChild(createEl('div', { class: 'slot' }, '<span class="small muted">Empty</span>'));
-      }
-      section.appendChild(miniGrid);
-      wrap.appendChild(section);
-    });
-
-    // Other (inactive) party members toggle
-    if (otherCompanions.length) {
-      const toggleSection = createEl('div', { class: 'card' });
-      const toggleBtn = createEl('button', { class: 'secondary', style: 'width:100%;margin-bottom:8px' },
-        `▼ Other Companions (${otherCompanions.length})`);
-      const otherBody = createEl('div', { style: 'display:none' });
-      toggleBtn.addEventListener('click', () => {
-        const hidden = otherBody.style.display === 'none';
-        otherBody.style.display = hidden ? '' : 'none';
-        toggleBtn.textContent = (hidden ? '▲' : '▼') + ` Other Companions (${otherCompanions.length})`;
-      });
-      otherCompanions.forEach(actor => {
-        const row = createEl('div', { class: 'row', style: 'padding:4px 0;border-bottom:1px solid var(--line-color)' });
-        row.innerHTML = `<strong>${actor.name}</strong><span class="small">${actor.classId} · ${actor.inventory?.length || 0} items</span>`;
-        otherBody.appendChild(row);
-      });
-      toggleSection.append(toggleBtn, otherBody);
-      wrap.appendChild(toggleSection);
-    }
-
-    root.appendChild(wrap);
-    return;
-  }
-
-  // ── SHIP TAB ──
-  if (_invTab === 'ship') {
-    const stashCol = createEl('div', { class: 'card' });
-    stashCol.innerHTML = '<strong>Ship Cargo</strong><div class="small">Shared storage accessible from the ship.</div>';
-    const stashGrid = createEl('div', { class: 'slot-grid', style: 'margin-top:10px' });
-    (state.ship.cargo || []).forEach((entry, idx) => {
-      const item    = getById(data.items, entry.itemId);
-      const typeCls = ITEM_TYPE_CLASS[item?.type] || 'item-type-misc';
-      const slot = createEl('div', { class: 'slot' });
-      slot.innerHTML = `<div class="item ${typeCls}"><strong>${entry.customName || item?.name || entry.itemId}</strong><div class="meta">${item?.type || 'misc'} x${entry.qty}</div></div>`;
-      slot.addEventListener('click', () => api.inspectCargoItem(idx));
-      stashGrid.appendChild(slot);
-    });
-    for (let i = (state.ship.cargo||[]).length; i < 24; i++) {
-      stashGrid.appendChild(createEl('div', { class: 'slot' }, '<span class="small">—</span>'));
-    }
-    stashCol.appendChild(stashGrid);
-    wrap.appendChild(stashCol);
-    root.appendChild(wrap);
-    return;
-  }
+  wrap.append(actorCol, bagCol, stashCol);
+  root.appendChild(wrap);
 }
 
 // ─── CREW ─────────────────────────────────────────────────────────────────────
