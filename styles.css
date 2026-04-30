@@ -928,3 +928,14 @@ button:disabled  { opacity: 0.45; cursor: not-allowed; filter: none; }
   padding: 4px 10px;
   font-size: 12px;
 }
+
+/* ─── GAME TABLE TILE ─────────────────────────────────────── */
+.tile.game-table {
+  background: radial-gradient(circle at 50% 60%, #0d2a1c 30%, #061410 100%) !important;
+  box-shadow: inset 0 0 8px rgba(30,200,100,0.12);
+}
+.tile.game-table .tile-icon {
+  color: #4aff9a;
+  text-shadow: 0 0 8px rgba(74,255,154,0.5);
+  font-size: 20px;
+}

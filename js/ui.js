@@ -172,6 +172,7 @@ export function renderMap(state, data, api) {
       } else {
         if (t.cover)    cls += ' cover';
         if (t.locked)   cls += ' tile-locked';
+        if (t.gameTable)       cls += ' game-table';
         if (t.transition)      cls += ' tile-door';
         else if (t.loot)       cls += ' tile-loot';
         else if (t.interact)   cls += ' tile-interact';
@@ -181,7 +182,7 @@ export function renderMap(state, data, api) {
       tile.style.left = `${x * size}px`; tile.style.top = `${y * size}px`;
       tile.dataset.x  = x; tile.dataset.y = y;
 
-      if (revealed && (t.transition || t.loot || t.interact)) {
+      if (revealed && (t.transition || t.loot || t.interact || t.gameTable)) {
         const iconSpan = createEl('span', { class: 'tile-icon' });
         iconSpan.textContent = getTileIcon(t);
         tile.appendChild(iconSpan);
@@ -238,6 +239,7 @@ export function renderMap(state, data, api) {
 }
 
 function buildTileTooltip(t) {
+  if (t.gameTable) return `[◈ Card Table] Join a game · Min bet varies`;
   const name = t.containerName || (t.transition ? `→ ${t.transition.mapId}` : null)
     || t.interactText?.slice(0, 60) || 'Interactable';
   const type = t.transition ? 'Door/Transition' : t.loot ? 'Container' : 'Interact';
@@ -246,6 +248,7 @@ function buildTileTooltip(t) {
 }
 
 function getTileIcon(t) {
+  if (t.gameTable) return '◈';
   if (t.transition) {
     const dest = t.transition.mapId || '';
     if (dest.includes('vent'))     return '▤';

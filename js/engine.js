@@ -1,6 +1,7 @@
 import { $, $$, chance, clamp, createEl, deepClone, distance, getById, pick, rand, rollDice, statMod, uid } from './utils.js';
 import { applyDerivedStats, createActorFromTemplate, freshState, loadState, saveState } from './state.js';
 import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD } from './ui.js';
+import { openCardTable, resetGamblerCredits } from './CardTable.js';
 
 export class GameEngine {
   constructor(data) {
@@ -81,6 +82,7 @@ export class GameEngine {
       shipRest: () => this.shipRest(),
       convertScrapToFuel: () => this.convertScrapToFuel(),
       openCargo: () => this.openPanel('inventoryPanel'),
+      openCardTable: (tableId) => openCardTable(tableId, this.state, this.data, this.api),
       listSaves: () => this.listSaves(),
       saveToSlot: (slot, name) => this.saveToSlot(slot, name),
       loadFromSlot: slot => this.loadFromSlot(slot),
@@ -700,6 +702,23 @@ populateCreator() {
     } else {
       if (tile.loot && inRange) options.push(['Loot', () => this.inspectTile(x, y)]);
       if (tile.interact && inRange) options.push(['Interact', () => this.inspectTile(x, y)]);
+      // Game table interaction
+      if (tile.gameTable && inRange) {
+        const tableId = tile.gameTable;
+        const tableDef = (this.data.tables || []).find(t => t.id === tableId);
+        const tableName = tableDef?.name || 'Card Table';
+        options.push([`◈ Join ${tableName}`, () => openCardTable(tableId, this.state, this.data, this.api)]);
+        options.push([`View Table Info`, () => {
+          if (tableDef) {
+            const seats = (tableDef.seats || []).map(s => {
+              const g = (this.data.gamblers || []).find(x => x.id === s.gamblerId);
+              return g?.name || s.gamblerId;
+            }).join(', ');
+            this.log(`${tableName} — ${tableDef.location}. Players: ${seats}. Min bet: ${tableDef.minBet}¢.`);
+          }
+        }]);
+      }
+      if (tile.gameTable && !inRange) options.push([`◈ Card Table (move closer)`, () => this.log('Move within 5 tiles to join the game.')]);
       if (!tile.blocked) options.push(['Move Here', () => this.moveActorToward(actor, x, y)]);
       if (tile.loot && !inRange) options.push([`Loot (move closer)`, () => this.log('Move closer to loot this.')]);
       if (tile.interact && !inRange) options.push([`Interact (move closer)`, () => this.log('Move closer to interact.')]);
@@ -1804,6 +1823,7 @@ attack(attacker, target, ability = null) {
     });
     this.advanceTime(8 * 60);
     this.state.partyControl.squadStealth = false;
+    resetGamblerCredits(this.state, this.data);
     this.log('The crew takes a long rest.');
   }
 
@@ -1904,6 +1924,7 @@ attack(attacker, target, ability = null) {
     });
     this.revealFog();
     this.resolveTravelEncounter(node);
+    resetGamblerCredits(this.state, this.data);
     this.checkQuestProgress();
     this.log(`Travel complete: arrived at ${node.name}.`);
     requestAnimationFrame(() => this.fitViewportToScreen(true));

@@ -70,7 +70,8 @@ export function freshState(data) {
       openPanels: [],
       messages: [],
       viewedCodex: false
-    }
+    },
+    gamblerCredits: {}
   };
 }
 
