@@ -10,14 +10,30 @@
     "minBet": 10,
     "maxBet": 250,
     "seats": [
-      { "gamblerId": "voss_shark",     "startingCredits": 400 },
-      { "gamblerId": "mira_nervous",   "startingCredits": 180 },
-      { "gamblerId": "drek_reckless",  "startingCredits": 220 }
+      {
+        "gamblerId": "voss_shark",
+        "startingCredits": 400
+      },
+      {
+        "gamblerId": "mira_nervous",
+        "startingCredits": 180
+      },
+      {
+        "gamblerId": "drek_reckless",
+        "startingCredits": 220
+      }
     ],
-    "availableGames": ["blackjack", "void_draw"],
+    "availableGames": [
+      "blackjack",
+      "void_draw",
+      "holdem"
+    ],
     "requiredFlag": null,
     "requiredFaction": null,
-    "gossipPool": ["dock_gossip_1", "wake_hint_1"],
+    "gossipPool": [
+      "dock_gossip_1",
+      "wake_hint_1"
+    ],
     "onPlayerWinFlag": "beat_sump_table",
     "narrativeNPC": "voss_shark"
   },
@@ -32,13 +48,25 @@
     "minBet": 50,
     "maxBet": 1000,
     "seats": [
-      { "gamblerId": "commander_vask_off",  "startingCredits": 800 },
-      { "gamblerId": "kael_drin_gambler",   "startingCredits": 600 }
+      {
+        "gamblerId": "commander_vask_off",
+        "startingCredits": 800
+      },
+      {
+        "gamblerId": "kael_drin_gambler",
+        "startingCredits": 600
+      }
     ],
-    "availableGames": ["void_draw"],
+    "availableGames": [
+      "void_draw",
+      "holdem"
+    ],
     "requiredFlag": "talked_commander_vask",
     "requiredFaction": null,
-    "gossipPool": ["impound_hint_1", "vask_secret_1"],
+    "gossipPool": [
+      "impound_hint_1",
+      "vask_secret_1"
+    ],
     "onPlayerWinFlag": "beat_vask_at_cards",
     "narrativeNPC": "commander_vask_off"
   },
@@ -53,14 +81,29 @@
     "minBet": 20,
     "maxBet": 400,
     "seats": [
-      { "gamblerId": "ash_boss_rel",    "startingCredits": 500 },
-      { "gamblerId": "frontier_del",    "startingCredits": 200 },
-      { "gamblerId": "frontier_yara",   "startingCredits": 190 }
+      {
+        "gamblerId": "ash_boss_rel",
+        "startingCredits": 500
+      },
+      {
+        "gamblerId": "frontier_del",
+        "startingCredits": 200
+      },
+      {
+        "gamblerId": "frontier_yara",
+        "startingCredits": 190
+      }
     ],
-    "availableGames": ["blackjack", "void_draw"],
+    "availableGames": [
+      "blackjack",
+      "void_draw",
+      "holdem"
+    ],
     "requiredFlag": null,
     "requiredFaction": null,
-    "gossipPool": ["ember_convoy_hint"],
+    "gossipPool": [
+      "ember_convoy_hint"
+    ],
     "onPlayerWinFlag": "impressed_ash_crew",
     "narrativeNPC": "ash_boss_rel"
   }
