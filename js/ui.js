@@ -1,8 +1,5 @@
 import { $, $$, clamp, createEl, formatTime, getById } from './utils.js';
 
-// Re-export for engine access
-export { renderVendor, renderSkillCheckIfPending };
-
 // ─── PANEL DRAG ───────────────────────────────────────────────────────────────
 function initPanelDrag(panel) {
   const header = panel.querySelector('.panel-header');
