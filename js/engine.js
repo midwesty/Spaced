@@ -8,6 +8,9 @@ export class GameEngine {
     this.data = data;
     this.state = loadState() || freshState(data);
     this.pendingAction = null;
+    this.pendingAbilityPreview = null;
+    this.pendingLockpick = null;
+    this.pendingPickpocket = null;
     this.drag = { active: false, pending: false, pointerId: null, lastX: 0, lastY: 0, startX: 0, startY: 0 };
     this.moving = false; // true while step-by-step movement animation is running
     this.pinch = { active: false, startDistance: 0, startZoom: 1 };
@@ -1331,8 +1334,6 @@ getAttackPreview(attacker, target, ability = null) {
   const aoeRadius = ability?.aoeRadius || 0;
   return { hitPct, atkBonus, acTarget, inRange, range, dmgExpr, aoeRadius, abilityName: ability?.name };
 }
-
-pendingAbilityPreview = null;
 
 setAttackHoverTarget(targetId) {
   const attacker = this.commandActor();
