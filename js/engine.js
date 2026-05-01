@@ -1550,15 +1550,16 @@ getVisibleNPCCones() {
 }
 
 // Updated raiseCrime with tiered penalties
-raiseCrime(kind) {
-  this.state.crime.witnessLevel += 1;
-  this.state.flags.crimeAlert = true;
-  const penalty = { murder: -8, assault: -3, theft: -4, trespass: -1 }[kind] || -2;
-  this.state.factions['station_civic'] = (this.state.factions['station_civic'] || 0) + penalty;
-  this.log(`Crime recorded: ${kind}. Civic standing: ${this.state.factions['station_civic']}.`);
-}
-    const actor = this.state.roster.find(a => a.id === id);
-    if (!actor) return;
+  raiseCrime(kind) {
+    this.state.crime.witnessLevel += 1;
+    this.state.flags.crimeAlert = true;
+    const penalty = { murder: -8, assault: -3, theft: -4, trespass: -1 }[kind] || -2;
+    this.state.factions['station_civic'] = (this.state.factions['station_civic'] || 0) + penalty;
+    this.log(`Crime recorded: ${kind}. Civic standing: ${this.state.factions['station_civic']}.`);
+  }
+
+  interactWithActor(id) {
+    const actor = this.state.roster.find(a => a.id === id);    if (!actor) return;
     // Save current party selection — never let NPC become selectedActorId
     const prevSelectedId = this.state.party.includes(this.state.selectedActorId)
       ? this.state.selectedActorId
