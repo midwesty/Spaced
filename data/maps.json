@@ -16755,64 +16755,64 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -16983,8 +16983,36 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -16997,50 +17025,22 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -17225,8 +17225,36 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -17239,50 +17267,22 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -17481,64 +17481,64 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -17715,64 +17715,64 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -17941,71 +17941,71 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -18174,8 +18174,8 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -18392,44 +18392,44 @@
      "interact": false
     },
     {
-     "type": "metal",
-     "blocked": true,
-     "cover": true,
+     "type": "floor",
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -18467,15 +18467,15 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -18647,64 +18647,64 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -18891,64 +18891,64 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -19130,22 +19130,22 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -19167,29 +19167,29 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -19358,22 +19358,22 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
@@ -19395,29 +19395,29 @@
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
     {
      "type": "floor",
-     "blocked": true,
-     "cover": true,
+     "blocked": false,
+     "cover": false,
      "loot": false,
      "interact": false
     },
