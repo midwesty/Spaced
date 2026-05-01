@@ -16993,7 +16993,8 @@
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "gameTable": "scavenger_wake_table"
     },
     {
      "type": "floor",
