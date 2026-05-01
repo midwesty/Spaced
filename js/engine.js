@@ -121,14 +121,7 @@ export class GameEngine {
     this.state.party.push(hero.id);
     this.state.selectedActorId = hero.id;
 
-    this.data.companions.forEach(c => {
-      const actor = createActorFromTemplate(c, this.data);
-      actor.mapId = c.startMapId;
-      applyDerivedStats(actor, this.data);
-      this.state.roster.push(actor);
-      this.state.relationship[actor.id] = { affinity: actor.affinity || 0, romance: 0, flags: [] };
-    });
-
+    // Spawn map actors first
     const mapActors = this.currentMap().actors.map(t => {
       const actor = createActorFromTemplate(t, this.data);
       actor.mapId = this.state.mapId;
@@ -136,6 +129,34 @@ export class GameEngine {
       return actor;
     });
     this.state.roster.push(...mapActors);
+
+    // Spawn companions — skip any whose id already appears as a map actor templateId
+    const mapActorTemplateIds = new Set(mapActors.map(a => a.templateId).filter(Boolean));
+
+    this.data.companions.forEach(c => {
+      // Deduplicate: if map already has this companion placed as a map actor, skip
+      if (mapActorTemplateIds.has(c.id)) return;
+
+      const actor = createActorFromTemplate(c, this.data);
+      actor.mapId = c.startMapId;
+      applyDerivedStats(actor, this.data);
+
+      // Copy vendor-specific fields that createActorFromTemplate ignores
+      if (c.isVendor) {
+        actor.isVendor        = true;
+        actor.vendorInventory = deepClone(c.vendorInventory || []);
+        actor.vendorMarkup    = c.vendorMarkup    ?? 1.4;
+        actor.vendorMarkdown  = c.vendorMarkdown  ?? 0.4;
+        actor.vendorGold      = c.vendorGold      ?? 200;
+      }
+      // Copy vision fields
+      if (c.visionRange)  actor.visionRange  = c.visionRange;
+      if (c.visionAngle)  actor.visionAngle  = c.visionAngle;
+      if (c.facing)       actor.facing       = deepClone(c.facing);
+
+      this.state.roster.push(actor);
+      this.state.relationship[actor.id] = { affinity: actor.affinity || 0, romance: 0, flags: [] };
+    });
 
     this.data.quests.forEach(q => this.state.quests[q.id] = { stage: 0, complete: false, failed: false });
     this.state.partyControl.leaderId = hero.id;
@@ -1408,12 +1429,22 @@ handleLockedTile(actor, x, y, tile) {
         this.renderAll();
         this.moveActorToward(actor, x, y);
       }]);
-    } else {
-      this.log(`🔒 Locked. Requires: ${item?.name || reqItem}.`);
     }
   }
-  const hasPicks = actor.inventory.some(e => e.itemId === 'lockpick');
-  if (hasPicks) options.push([`🔧 Pick Lock (Tech DC ${tile.lockDC || 14})`, () => this.tryLockpick(actor, x, y)]);
+
+  const pickEntry = actor.inventory.find(e => e.itemId === 'lockpick');
+  const hasPicks = pickEntry && pickEntry.qty > 0;
+  const lockDC = tile.lockDC || 14;
+
+  if (hasPicks) {
+    options.push([`🔧 Pick Lock — Tech DC ${lockDC} (${pickEntry.qty} picks left)`, () => this.tryLockpick(actor, x, y)]);
+  } else {
+    // Always show the option — just disabled with a hint
+    options.push([`🔧 Pick Lock — Need a Lockpick Set (buy from Torsh)`, () => {
+      this.log('You need a Lockpick Set to attempt this. Torsh at the Sump Bar sells them.');
+    }]);
+  }
+
   if (!options.length) { this.log(`🔒 Locked. ${tile.lockHint || 'Find a key or pick the lock.'}`); return; }
   if (options.length === 1) { options[0][1](); return; }
   const px = window._lastClickX || window.innerWidth / 2;
@@ -1536,14 +1567,14 @@ witnessCheck(perpetrator, crimeKind) {
 getVisibleNPCCones() {
   const npcs = this.state.roster.filter(a =>
     a.mapId === this.state.mapId && !a.dead && !this.state.party.includes(a.id) &&
-    (a.role === 'neutral' || a.role === 'enemy') && (a.visionRange || a.ai === 'guard')
+    (a.role === 'neutral' || a.role === 'enemy')
   );
   const party = this.state.party.map(id => this.state.roster.find(a => a.id === id)).filter(Boolean);
   return npcs.map(npc => ({
     npcId: npc.id, x: npc.x, y: npc.y,
     facing: npc.facing || { dx: 0, dy: 1 },
-    visionRange: npc.visionRange || 6,
-    visionAngle: npc.visionAngle || 120,
+    visionRange: npc.visionRange || (npc.role === 'enemy' ? 8 : 5),
+    visionAngle: npc.visionAngle || (npc.ai === 'guard' ? 90 : 120),
     alert: party.some(p => this.npcCanSeeActor(npc, p)),
     ai: npc.ai
   }));
