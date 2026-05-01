@@ -3192,12 +3192,13 @@
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "dirt",
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false,
-     "gameTable": "civic_backroom"
+     "interact": true,
+     "gameTable": "civic_backroom",
+     "interactText": "Officer's Table Only"
     },
     {
      "type": "floor",
@@ -16993,8 +16994,9 @@
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false,
-     "gameTable": "scavenger_wake_table"
+     "interact": true,
+     "gameTable": "scavenger_wake_table",
+     "interactText": "The Wake's Crew Table"
     },
     {
      "type": "floor",
