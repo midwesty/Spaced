@@ -1557,6 +1557,8 @@ raiseCrime(kind) {
   this.state.factions['station_civic'] = (this.state.factions['station_civic'] || 0) + penalty;
   this.log(`Crime recorded: ${kind}. Civic standing: ${this.state.factions['station_civic']}.`);
 }
+
+interactWithActor(id) {
     const actor = this.state.roster.find(a => a.id === id);
     if (!actor) return;
     // Save current party selection — never let NPC become selectedActorId
