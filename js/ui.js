@@ -362,6 +362,7 @@ function renderVisionCones(state, data, api, entityLayer, tileSize) {
   });
 
   effectLayer.appendChild(svg);
+}
 
 function buildTileTooltip(t) {
   if (t.gameTable) return `[◈ Card Table] Join a game · Min bet varies`;
