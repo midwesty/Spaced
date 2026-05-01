@@ -1,5 +1,14 @@
 import { loadGameData } from './data.js';
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 function formatStartupError(err) {
   const message = String(err?.message || err || 'Unknown startup error');
   const stack = err?.stack ? `\n\n${err.stack}` : '';
@@ -8,34 +17,66 @@ function formatStartupError(err) {
 
   if (message.includes('Unexpected token') && message.includes('export')) {
     hint = `
-Possible cause:
-A module file such as engine.js, data.js, ui.js, state.js, utils.js, or CardTable.js is being loaded as a normal script.
 
-Fix:
-Your index.html should directly load ONLY this file:
+Most likely cause:
+A module file such as engine.js, data.js, ui.js, state.js, utils.js, or CardTable.js is being loaded as a normal script somewhere.
+
+Your index.html should directly load ONLY this one JavaScript file:
+
 <script type="module" src="js/main.js"></script>
 
-Do not directly load engine.js, data.js, ui.js, state.js, utils.js, or CardTable.js with separate <script> tags.`;
+Do NOT directly load these with separate script tags:
+<script src="js/engine.js"></script>
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/CardTable.js"></script>
+
+Also make sure you are opening index.html through GitHub Pages or a local server, not by double-clicking the file.`;
   }
 
-  if (message.includes('Failed to fetch') || message.includes('Unexpected token') && message.includes('<')) {
+  if (message.includes('Failed to fetch') || (message.includes('Unexpected token') && message.includes('<'))) {
     hint = `
+
 Possible cause:
 A JSON file path is wrong, missing, or returning an HTML 404 page instead of JSON.
 
-Fix:
 Make sure all JSON files are inside the /data/ folder and named exactly:
-config.json, species.json, classes.json, abilities.json, items.json, statuses.json, companions.json, quests.json, dialogue.json, maps.json, encounters.json, factions.json, tables.json, gamblers.json.`;
+config.json
+species.json
+classes.json
+abilities.json
+items.json
+statuses.json
+companions.json
+quests.json
+dialogue.json
+maps.json
+encounters.json
+factions.json
+tables.json
+gamblers.json`;
   }
 
-  if (message.includes('Failed to resolve module specifier') || message.includes('404') || message.includes('not found')) {
+  if (
+    message.includes('Failed to resolve module specifier') ||
+    message.includes('404') ||
+    message.includes('not found')
+  ) {
     hint = `
+
 Possible cause:
 A JavaScript module file is missing or in the wrong folder.
 
-Fix:
 Make sure these files are inside /js/:
-main.js, data.js, engine.js, state.js, ui.js, utils.js, CardTable.js.`;
+main.js
+data.js
+engine.js
+state.js
+ui.js
+utils.js
+CardTable.js`;
   }
 
   return `${message}${hint}${stack}`;
@@ -58,14 +99,15 @@ function showStartupError(err) {
     box.style.borderRadius = '12px';
     box.style.background = 'rgba(80,20,20,0.35)';
     box.style.whiteSpace = 'pre-wrap';
-    box.style.maxHeight = '260px';
+    box.style.maxHeight = '320px';
     box.style.overflow = 'auto';
     box.style.fontSize = '13px';
     box.style.lineHeight = '1.45';
+    box.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
     panel.appendChild(box);
   }
 
-  box.innerHTML = `<strong>Startup error</strong><br>${formatStartupError(err)}`;
+  box.innerHTML = `<strong>Startup error</strong><br>${escapeHtml(formatStartupError(err))}`;
 }
 
 window.addEventListener('error', (e) => {
