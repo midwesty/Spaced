@@ -1,8 +1,5 @@
 import { $, $$, clamp, createEl, formatTime, getById } from './utils.js';
 
-// Re-export for engine access
-export { renderVendor, renderSkillCheckIfPending };
-
 // ─── PANEL DRAG ───────────────────────────────────────────────────────────────
 function initPanelDrag(panel) {
   const header = panel.querySelector('.panel-header');
@@ -175,7 +172,6 @@ export function renderMap(state, data, api) {
       } else {
         if (t.cover)    cls += ' cover';
         if (t.locked)   cls += ' tile-locked';
-        if (t.smoke > 0) cls += ' smoky';
         if (t.gameTable)       cls += ' game-table';
         if (t.transition)      cls += ' tile-door';
         else if (t.loot)       cls += ' tile-loot';
@@ -228,143 +224,19 @@ export function renderMap(state, data, api) {
     const icon = roleIcon[actor.role] || actor.name.split(' ').map(w => w[0]).slice(0,2).join('');
     ent.innerHTML = `<span class="icon">${icon}</span><div class="bubble">${actor.name}</div>`;
 
-    // Entity tooltip — shows attack preview in combat
-    ent.addEventListener('mouseenter', e => {
-      if (state.combat.active) {
-        api.setAttackHoverTarget?.(actor.id);
-      }
-      const preview = api.pendingAbilityPreview ?? null;
-      // Build tooltip text
-      let tipText = `${actor.name} · ${actor.classId} · HP ${actor.hp}/${actor.hpMax} · AC ${actor.armor}`;
-      if (preview && state.combat.active) {
-        tipText += `\n⚔ Hit chance: ${preview.hitPct}% · ${preview.dmgExpr}`;
-        if (!preview.inRange) tipText += ` · OUT OF RANGE (${preview.range})`;
-        if (preview.aoeRadius > 0) tipText += ` · AoE r${preview.aoeRadius}`;
-      }
-      showTileTooltip(tipText, e.clientX, e.clientY);
-      // Show AoE ring if relevant
-      if (preview?.aoeRadius > 0) renderAoEPreview(actor.x, actor.y, preview.aoeRadius, size);
-    });
-    ent.addEventListener('mousemove', e => {
-      const preview = api.pendingAbilityPreview ?? null;
-      let tipText = `${actor.name} · ${actor.classId} · HP ${actor.hp}/${actor.hpMax} · AC ${actor.armor}`;
-      if (preview && state.combat.active) {
-        tipText += `\n⚔ Hit chance: ${preview.hitPct}% · ${preview.dmgExpr}`;
-        if (!preview.inRange) tipText += ` · OUT OF RANGE`;
-        if (preview.aoeRadius > 0) tipText += ` · AoE r${preview.aoeRadius}`;
-      }
-      showTileTooltip(tipText, e.clientX, e.clientY);
-    });
-    ent.addEventListener('mouseleave', () => {
-      hideTileTooltip();
-      clearAoEPreview();
-      api.clearAttackHover?.();
-    });
+    // Entity tooltip
+    ent.addEventListener('mouseenter', e => showTileTooltip(
+      `${actor.name} · ${actor.classId} · HP ${actor.hp}/${actor.hpMax}`, e.clientX, e.clientY));
+    ent.addEventListener('mousemove',  e => showTileTooltip(
+      `${actor.name} · ${actor.classId} · HP ${actor.hp}/${actor.hpMax}`, e.clientX, e.clientY));
+    ent.addEventListener('mouseleave', hideTileTooltip);
 
     ent.addEventListener('pointerdown', e => e.stopPropagation());
     ent.addEventListener('click', e => { e.stopPropagation(); api.handleActorPrimary(actor.id, e); });
     ent.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); api.showActorContext(actor.id, e.clientX, e.clientY); });
     entityLayer.appendChild(ent);
   });
-
-  // ── NPC Vision Cone Overlay ──
-  renderVisionCones(state, data, api, entityLayer, size);
 }
-
-// ─── AoE RING PREVIEW ────────────────────────────────────────────────────────
-let _aoePreviewEl = null;
-function renderAoEPreview(cx, cy, radius, tileSize) {
-  clearAoEPreview();
-  const el = createEl('div', { class: 'aoe-preview-ring' });
-  const px = (cx - radius) * tileSize;
-  const py = (cy - radius) * tileSize;
-  const sz = (radius * 2 + 1) * tileSize;
-  el.style.left   = `${px}px`;
-  el.style.top    = `${py}px`;
-  el.style.width  = `${sz}px`;
-  el.style.height = `${sz}px`;
-  el.style.borderRadius = '50%';
-  document.getElementById('effectLayer').appendChild(el);
-  _aoePreviewEl = el;
-}
-function clearAoEPreview() {
-  if (_aoePreviewEl) { _aoePreviewEl.remove(); _aoePreviewEl = null; }
-}
-
-// ─── NPC VISION CONE RENDERING ───────────────────────────────────────────────
-// Draws translucent cone overlays for NPCs with visionRange set.
-// Cones are SVG polygons drawn on the effectLayer.
-let _visionConeContainer = null;
-
-function renderVisionCones(state, data, api, entityLayer, tileSize) {
-  // Remove old cone SVG
-  if (_visionConeContainer) { _visionConeContainer.remove(); _visionConeContainer = null; }
-
-  // Only show if any party member is stealthed, or always show if in stealth mode
-  const partyStealthed = state.party.some(id => {
-    const a = state.roster.find(x => x.id === id);
-    return a?.statuses?.includes('stealthed');
-  });
-  const showCones = partyStealthed || state.partyControl?.squadStealth;
-  if (!showCones) return;
-
-  const cones = api.getVisibleNPCCones?.() || [];
-  if (!cones.length) return;
-
-  const effectLayer = document.getElementById('effectLayer');
-  if (!effectLayer) return;
-
-  const map = data.maps.find(m => m.id === state.mapId);
-  if (!map) return;
-
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('width',  map.width  * tileSize);
-  svg.setAttribute('height', map.height * tileSize);
-  svg.style.position = 'absolute';
-  svg.style.left = '0'; svg.style.top = '0';
-  svg.style.pointerEvents = 'none';
-  svg.style.zIndex = '4';
-  _visionConeContainer = svg;
-
-  cones.forEach(cone => {
-    const cx = (cone.x + 0.5) * tileSize;
-    const cy = (cone.y + 0.5) * tileSize;
-    const r  = cone.visionRange * tileSize;
-    const halfAngle = (cone.visionAngle / 2) * (Math.PI / 180);
-
-    // Facing direction → angle in radians
-    const faceAngle = Math.atan2(cone.facing.dy, cone.facing.dx);
-    const startAngle = faceAngle - halfAngle;
-    const endAngle   = faceAngle + halfAngle;
-
-    // Build arc path
-    const steps = 16;
-    let points = [[cx, cy]];
-    for (let i = 0; i <= steps; i++) {
-      const a = startAngle + (endAngle - startAngle) * (i / steps);
-      points.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
-    }
-    const pointStr = points.map(p => p.join(',')).join(' ');
-
-    const poly = document.createElementNS(svgNS, 'polygon');
-    poly.setAttribute('points', pointStr);
-    poly.setAttribute('fill',   cone.alert ? 'rgba(255,80,60,0.22)' : 'rgba(255,200,60,0.14)');
-    poly.setAttribute('stroke', cone.alert ? 'rgba(255,80,60,0.7)'  : 'rgba(255,200,60,0.5)');
-    poly.setAttribute('stroke-width', '1.5');
-
-    // NPC dot at center
-    const dot = document.createElementNS(svgNS, 'circle');
-    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
-    dot.setAttribute('r', '5');
-    dot.setAttribute('fill', cone.alert ? '#ff5040' : '#ffcc3c');
-    dot.setAttribute('stroke', '#000'); dot.setAttribute('stroke-width', '1');
-
-    svg.appendChild(poly);
-    svg.appendChild(dot);
-  });
-
-  effectLayer.appendChild(svg);
 
 function buildTileTooltip(t) {
   if (t.gameTable) return `[◈ Card Table] Join a game · Min bet varies`;
@@ -791,27 +663,6 @@ function renderInvBag(actor, state, data, api, showCargo = false) {
       <div class="meta">${item?.type || 'item'} x${entry.qty}</div>
     </div>`;
     slot.addEventListener('click', e => api.inspectInventoryItem(actor.id, origIdx, e.clientX, e.clientY));
-    // Right-click: context with throw option for throwable items
-    slot.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      const opts = [['Inspect', () => api.inspectInventoryItem(actor.id, origIdx, e.clientX, e.clientY)]];
-      if (item?.throwable) opts.push([`🎯 Throw ${item.name}`, () => api.prepareThrow(actor.id, origIdx)]);
-      if (item?.type === 'consumable') opts.push(['Use', () => api.inspectInventoryItem(actor.id, origIdx, e.clientX, e.clientY, true)]);
-      // Show mini context
-      const menu = document.getElementById('contextMenu');
-      if (menu) {
-        menu.innerHTML = '';
-        opts.forEach(([label, fn]) => {
-          const btn = document.createElement('button');
-          btn.textContent = label;
-          btn.onclick = (ev) => { ev.stopPropagation(); menu.classList.add('hidden'); fn(); };
-          menu.appendChild(btn);
-        });
-        menu.style.left = `${Math.min(e.clientX, window.innerWidth - 210)}px`;
-        menu.style.top  = `${Math.min(e.clientY, window.innerHeight - (opts.length * 44))}px`;
-        menu.classList.remove('hidden');
-      }
-    });
     slot.setAttribute('draggable', 'true');
     slot.addEventListener('dragstart', e => {
       _dragSlot = item?.slot || null;
@@ -1298,178 +1149,10 @@ function _showDiceRoll(choice, state, data, api, speakerActor, dialogueRoot) {
   });
 }
 
-// ─── VENDOR TRADE PANEL ───────────────────────────────────────────────────────
-export function renderVendor(state, data, api, vendor) {
-  const root = $('#inspectBody');
-  if (!root) return;
-
-  const playerActor = state.roster.find(a => a.id === state.selectedActorId && state.party.includes(a.id))
-    || state.roster.find(a => state.party.includes(a.id) && !a.dead);
-
-  const stockItems = (vendor.vendorInventory || []).map(entry => {
-    const item = getById(data.items, entry.itemId);
-    return { item, qty: entry.qty, itemId: entry.itemId };
-  }).filter(e => e.item);
-
-  const markup   = vendor.vendorMarkup   ?? 1.4;
-  const credits  = state.resources.credits;
-
-  root.innerHTML = `
-    <div class="vendor-layout">
-      <div class="vendor-header">
-        <div class="vendor-name">🛒 ${vendor.name}</div>
-        <div class="vendor-credits">Your Credits: <strong>${credits}¢</strong></div>
-      </div>
-      <div class="vendor-columns">
-        <div class="vendor-col">
-          <div class="vendor-col-title">FOR SALE</div>
-          <div class="vendor-stock" id="vendorStock">
-            ${stockItems.length ? stockItems.map((e, i) => {
-              const price = Math.ceil((e.item.value || 10) * markup);
-              const canAfford = credits >= price;
-              return `<div class="vendor-item ${canAfford ? '' : 'vendor-cant-afford'}" data-vi="${i}">
-                <div class="vendor-item-name">${e.item.name}</div>
-                <div class="vendor-item-meta small">${e.item.type} · ${e.item.rarity || 'common'}</div>
-                <div class="vendor-item-desc small">${e.item.description || ''}</div>
-                <div class="vendor-item-price ${canAfford ? 'good' : 'danger-text'}">${price}¢</div>
-                <button class="vend-buy-btn" data-itemid="${e.itemId}" data-price="${price}" ${canAfford ? '' : 'disabled'}>Buy</button>
-              </div>`;
-            }).join('') : '<div class="small muted">Nothing in stock.</div>'}
-          </div>
-        </div>
-        <div class="vendor-col">
-          <div class="vendor-col-title">YOUR INVENTORY</div>
-          <div class="vendor-player-inv" id="vendorPlayerInv">
-            ${(playerActor?.inventory || []).map((entry, i) => {
-              const item = getById(data.items, entry.itemId);
-              if (!item || item.type === 'quest') return '';
-              const earnAmt = (item.sellValue || Math.floor((item.value || 10) * 0.4)) * entry.qty;
-              return `<div class="vendor-item" data-pi="${i}">
-                <div class="vendor-item-name">${entry.customName || item.name}</div>
-                <div class="vendor-item-meta small">${item.type} · x${entry.qty}</div>
-                <div class="vendor-item-price good">${earnAmt}¢</div>
-                <button class="vend-sell-btn" data-actorid="${playerActor.id}" data-idx="${i}">Sell</button>
-              </div>`;
-            }).join('') || '<div class="small muted">Nothing to sell.</div>'}
-          </div>
-        </div>
-      </div>
-      <button id="vendorCloseBtn" class="secondary" style="margin-top:10px;width:100%">Close</button>
-    </div>
-  `;
-
-  root.querySelectorAll('.vend-buy-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      api.buyFromVendor(vendor.id, btn.dataset.itemid, 1);
-      renderVendor(state, data, api, vendor); // refresh
-    });
-  });
-  root.querySelectorAll('.vend-sell-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      api.sellToVendor(vendor.id, btn.dataset.actorid, parseInt(btn.dataset.idx));
-      renderVendor(state, data, api, vendor); // refresh
-    });
-  });
-  root.querySelector('#vendorCloseBtn')?.addEventListener('click', () => {
-    state.activeVendorId = null;
-    $('#inspectPanel')?.classList.add('hidden');
-  });
-}
-
-// ─── SKILL CHECK DICE ROLL (Lockpick / Pickpocket / generic) ─────────────────
-// Called when state.pendingSkillCheck is set. Renders a dice roll UI
-// and calls the appropriate resolve method on completion.
-export function renderSkillCheckIfPending(state, data, api) {
-  const check = state.pendingSkillCheck;
-  if (!check) return;
-
-  // Only inject once
-  if (document.getElementById('skillCheckOverlay')) return;
-
-  const overlay = createEl('div', {
-    class: 'skill-check-overlay',
-    id: 'skillCheckOverlay'
-  });
-
-  const modStr = check.mod >= 0 ? `+${check.mod}` : `${check.mod}`;
-  overlay.innerHTML = `
-    <div class="dice-panel skill-check-panel">
-      <div class="dice-header">
-        <div class="dice-label">${check.label}</div>
-        <div class="small">${check.statLabel} · d20${modStr} vs DC ${check.dc}</div>
-      </div>
-      <div class="dice-visual">
-        <div class="dice-face" id="scDiceFace">?</div>
-      </div>
-      <div id="scDiceResult" class="dice-result hidden"></div>
-      <div class="row-wrap" style="justify-content:center;margin-top:14px;gap:10px">
-        <button id="scRollBtn" class="action-main-btn">🎲 Roll</button>
-        <button id="scCancelBtn" class="secondary">← Cancel</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-
-  let rolling = false;
-  const face      = overlay.querySelector('#scDiceFace');
-  const resultDiv = overlay.querySelector('#scDiceResult');
-
-  overlay.querySelector('#scCancelBtn').addEventListener('click', () => {
-    state.pendingSkillCheck = null;
-    overlay.remove();
-    api.renderAll();
-  });
-
-  overlay.querySelector('#scRollBtn').addEventListener('click', () => {
-    if (rolling) return;
-    rolling = true;
-    overlay.querySelector('#scRollBtn').disabled = true;
-    let ticks = 0;
-    const spin = setInterval(() => {
-      face.textContent = Math.floor(Math.random() * 20) + 1;
-      ticks++;
-      if (ticks > 16) {
-        clearInterval(spin);
-        const raw   = Math.floor(Math.random() * 20) + 1;
-        const total = raw + check.mod;
-        const pass  = total >= check.dc;
-        face.textContent = raw;
-        face.className   = `dice-face ${pass ? 'dice-pass' : 'dice-fail'}`;
-        resultDiv.classList.remove('hidden');
-        resultDiv.innerHTML = `
-          <div class="dice-total ${pass ? 'good' : 'danger-text'}">
-            ${raw} ${check.mod !== 0 ? (check.mod > 0 ? '+ ' : '− ') + Math.abs(check.mod) + ' = ' : '= '}<strong>${total}</strong>
-            ${pass ? '✓ Success' : '✗ Failure'} vs DC ${check.dc}
-          </div>
-        `;
-        setTimeout(() => {
-          overlay.remove();
-          // Route to the right resolver based on key
-          if (check.resolveKey === 'lockpick')   api.resolveLockpick?.(total, pass);
-          else if (check.resolveKey === 'pickpocket') api.resolvePickpocket?.(total, pass);
-          else api.renderAll?.();
-        }, 1600);
-      }
-    }, 75);
-  });
-}
-
 // ─── INSPECT ──────────────────────────────────────────────────────────────────
 export function renderInspect(state, data, html) {
   const root = $('#inspectBody');
-  if (!root) return;
-
-  // If a vendor is active, show vendor UI instead
-  if (state?.activeVendorId) {
-    const vendor = state.roster?.find(a => a.id === state.activeVendorId);
-    if (vendor && data) {
-      // renderVendor will be called from the engine via openVendor,
-      // but if renderAll triggers renderInspect while vendor is open, preserve vendor view
-      return;
-    }
-  }
-
-  root.innerHTML = html;
+  if (root) root.innerHTML = html;
 }
 
 // ─── CODEX ────────────────────────────────────────────────────────────────────

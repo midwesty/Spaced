@@ -1,6 +1,6 @@
 import { $, $$, chance, clamp, createEl, deepClone, distance, getById, pick, rand, rollDice, statMod, uid } from './utils.js';
 import { applyDerivedStats, createActorFromTemplate, freshState, loadState, saveState } from './state.js';
-import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD, renderSkillCheckIfPending, renderVendor } from './ui.js';
+import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD } from './ui.js';
 import { openCardTable, resetGamblerCredits } from './CardTable.js';
 
 export class GameEngine {
@@ -8,9 +8,6 @@ export class GameEngine {
     this.data = data;
     this.state = loadState() || freshState(data);
     this.pendingAction = null;
-    this.pendingAbilityPreview = null;
-    this.pendingLockpick = null;
-    this.pendingPickpocket = null;
     this.drag = { active: false, pending: false, pointerId: null, lastX: 0, lastY: 0, startX: 0, startY: 0 };
     this.moving = false; // true while step-by-step movement animation is running
     this.pinch = { active: false, startDistance: 0, startZoom: 1 };
@@ -86,27 +83,6 @@ export class GameEngine {
       convertScrapToFuel: () => this.convertScrapToFuel(),
       openCargo: () => this.openPanel('inventoryPanel'),
       openCardTable: (tableId) => openCardTable(tableId, this.state, this.data, this.api),
-      // Vendor
-      openVendor: (vendorId) => this.openVendor(vendorId),
-      buyFromVendor: (vendorId, itemId, qty) => this.buyFromVendor(vendorId, itemId, qty),
-      sellToVendor: (vendorId, actorId, itemIdx) => this.sellToVendor(vendorId, actorId, itemIdx),
-      // Combat additions
-      attemptShove: (attacker, target, ability) => this.attemptShove(attacker, target, ability),
-      attackAoE: (attacker, cx, cy, ability) => this.attackAoE(attacker, cx, cy, ability),
-      getActorsInRadius: (cx, cy, r, exId) => this.getActorsInRadius(cx, cy, r, exId),
-      getAttackPreview: (attacker, target, ability) => this.getAttackPreview(attacker, target, ability),
-      setAttackHoverTarget: (id) => this.setAttackHoverTarget(id),
-      clearAttackHover: () => this.clearAttackHover(),
-      getVisibleNPCCones: () => this.getVisibleNPCCones(),
-      // Throw
-      prepareThrow: (actorId, itemIdx) => this.prepareThrow(actorId, itemIdx),
-      throwItem: (actorId, itemIdx, tx, ty) => this.throwItem(actorId, itemIdx, tx, ty),
-      // Lockpick
-      tryLockpick: (actor, tx, ty) => this.tryLockpick(actor, tx, ty),
-      resolveLockpick: (roll, pass) => this.resolveLockpick(roll, pass),
-      resolvePickpocket: (roll, pass) => this.resolvePickpocket(roll, pass),
-      // Skill check pending state
-      getPendingSkillCheck: () => this.state.pendingSkillCheck,
       listSaves: () => this.listSaves(),
       saveToSlot: (slot, name) => this.saveToSlot(slot, name),
       loadFromSlot: slot => this.loadFromSlot(slot),
@@ -171,7 +147,7 @@ export class GameEngine {
       armor: 11 + statMod(stats.agility),
       stats,
       movement: 6,
-      abilities: [...(cls?.abilities || []), ...(species?.abilities || []), 'shove'],
+      abilities: [...(cls?.abilities || []), ...(species?.abilities || [])],
       inventory: deepClone(cls?.startingItems || []),
       equipped: deepClone(cls?.startingEquip || {}),
       bio: 'A nobody with a talent for surviving the worst day of their life.',
@@ -628,7 +604,6 @@ populateCreator() {
     renderSaves(this.state, this.data, this.api);
     renderAdmin(this.state, this.data, this.api);
     renderCodex();
-    renderSkillCheckIfPending(this.state, this.data, this.api);
     this.applyViewportTransform();
     saveState(this.state);
   }
@@ -687,10 +662,8 @@ populateCreator() {
     const inRange = commander ? this.isInRange(commander, actor.x, actor.y, 5) : false;
     const options = [];
     if (inRange && actor.dialogueId) options.push(['Talk', () => this.interactWithActor(id)]);
-    if (inRange && actor.isVendor) options.push(['🛒 Trade', () => this.openVendor(id)]);
     if (inRange) options.push(['Inspect', () => this.inspectActor(actor)]);
     if (this.state.combat.active && inRange) options.push(['Attack', () => this.attack(commander, actor)]);
-    if (this.state.combat.active && inRange) options.push(['Shove', () => this.attemptShove(commander, actor)]);
     if (inRange && actor.role === 'neutral') options.push(['Pickpocket', () => this.tryPickpocket(actor)]);
     if (actor.role === 'ally' && inRange) options.push(['Recruit', () => this.tryRecruit(actor)]);
     if (!inRange) options.push(['Too far — move closer', () => this.log(`Move within 5 tiles of ${actor.name}.`)]);
@@ -703,8 +676,6 @@ populateCreator() {
   }
 
   handleTileClick(x, y, e) {
-    window._lastClickX = e?.clientX;
-    window._lastClickY = e?.clientY;
     const actor = this.commandActor();
     if (!actor || actor.dead) return;
     const actionType = this.pendingActionType();
@@ -715,11 +686,6 @@ populateCreator() {
     if (actionType === 'loot')   return this.tryLootAt(x, y);
     if (actionType === 'ability') return this.tryUseAbilityAt(x, y, this.pendingActionAbilityId());
     if (actionType === 'move')   return this.moveActorToward(actor, x, y);
-    if (actionType === 'throw') {
-      const { actorId, itemIdx } = this.pendingAction;
-      this.pendingAction = null;
-      return this.throwItem(actorId, itemIdx, x, y);
-    }
 
     // No pending action — check what's on the tile and show options
     const tile = this.currentMap().tiles[y]?.[x];
@@ -730,10 +696,8 @@ populateCreator() {
 
     if (actorOnTile && actorOnTile.id !== actor.id) {
       if (inRange && actorOnTile.dialogueId) options.push(['Talk', () => this.interactWithActor(actorOnTile.id)]);
-      if (inRange && actorOnTile.isVendor) options.push(['🛒 Trade', () => this.openVendor(actorOnTile.id)]);
       if (inRange) options.push(['Inspect', () => { this.inspectActor(actorOnTile); }]);
       if (this.state.combat.active && inRange) options.push(['Attack', () => this.attack(actor, actorOnTile)]);
-      if (this.state.combat.active && inRange) options.push(['Shove', () => this.attemptShove(actor, actorOnTile)]);
       if (inRange) options.push(['Pickpocket', () => this.tryPickpocket(actorOnTile)]);
     } else {
       if (tile.loot && inRange) options.push(['Loot', () => this.inspectTile(x, y)]);
@@ -911,6 +875,28 @@ populateCreator() {
     setTimeout(() => this.walkPath(actor, steps, stepIdx + 1), 140);
   }
 
+  handleLockedTile(actor, x, y, tile) {
+    const reqItem = tile.requiredItem;
+    if (reqItem) {
+      const keyIdx = actor.inventory.findIndex(e => e.itemId === reqItem);
+      const item = getById(this.data.items, reqItem);
+      if (keyIdx >= 0) {
+        // Has key — use it
+        actor.inventory.splice(keyIdx, 1);
+        tile.locked = false;
+        this.log(`${actor.name} uses ${item?.name || reqItem} to unlock the door.`);
+        this.state.flags[`unlocked_${x}_${y}`] = true;
+        this.renderAll();
+        // Now move through
+        this.moveActorToward(actor, x, y);
+      } else {
+        this.log(`🔒 Locked. Requires: ${item?.name || reqItem}.`);
+      }
+    } else {
+      this.log(`🔒 Locked. ${tile.lockHint || 'You need to find another way in.'}`);
+    }
+  }
+
   resolveTileTriggers(actor, x, y) {
     const tile = this.currentMap().tiles[y][x];
     if (tile.interactId === 'wake_airlock' && !this.state.flags.acquiredWake) {
@@ -1009,33 +995,12 @@ tryUseAbilityAt(x, y, abilityId = null) {
     return;
   }
 
-  // Range check (range=0 means self/touch, skip check)
-  const abilityRange = ability.range ?? 1;
-  if (abilityRange > 0 && distance(actor, { x, y }) > abilityRange) {
-    this.log(`${ability.name} is out of range (max ${abilityRange} tiles).`);
-    return;
-  }
-
-  // AoE abilities: hit all actors in radius around target tile
-  if ((ability.aoeRadius || 0) > 0) {
-    this.attackAoE(actor, x, y, ability);
-    return;
-  }
-
-  // Push/shove ability
-  if (ability.kind === 'push') {
-    if (!target) { this.log('No target there to shove.'); return; }
-    this.attemptShove(actor, target, ability);
-    return;
-  }
-
   if (ability.kind === 'heal' && target) {
-    const healExpr = ability.healAmount || '1d6+2';
-    const amt = rollDice(healExpr).total + statMod(actor.stats.tech);
+    const amt = rand(4, 9) + statMod(actor.stats.tech);
     target.hp = clamp(target.hp + amt, 0, target.hpMax);
     this.spendAbilityResources(actor, ability);
     this.consumeAction(actor, ability.costType || 'action');
-    this.log(`${actor.name} heals ${target.name} for ${amt} HP.`);
+    this.log(`${actor.name} uses ${ability.name} on ${target.name} for ${amt}.`);
     this.advanceTime(1);
     this.pendingAction = null;
     this.renderAll();
@@ -1063,503 +1028,9 @@ tryUseFirstAbilityAt(x, y) {
   return this.tryUseAbilityAt(x, y, this.pendingActionAbilityId());
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// VENDOR / TRADE SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-
-// Player buys from vendor: transfers item, pays credits (buy price = value * markup ~1.4)
-buyFromVendor(vendorId, itemId, qty = 1) {
-  const vendor = this.state.roster.find(a => a.id === vendorId);
-  const buyer  = this.selectedActor();
-  if (!vendor || !buyer) return;
-  const item = getById(this.data.items, itemId);
-  if (!item) return;
-  const markup = vendor.vendorMarkup ?? 1.4;
-  const price = Math.ceil((item.value || 10) * markup) * qty;
-  if (this.state.resources.credits < price) {
-    this.log(`Not enough credits. Need ${price}¢, have ${this.state.resources.credits}¢.`);
-    return;
-  }
-  this.state.resources.credits -= price;
-  vendor.vendorGold = (vendor.vendorGold || 200) + price;
-  buyer.inventory.push({ itemId, qty });
-  this.log(`Bought ${qty}x ${item.name} for ${price}¢.`);
-  this.renderAll();
-}
-
-// Player sells to vendor: transfers item, earns credits (earn = item.sellValue)
-sellToVendor(vendorId, actorId, itemIdx) {
-  const vendor = this.state.roster.find(a => a.id === vendorId);
-  const seller = this.state.roster.find(a => a.id === actorId);
-  if (!vendor || !seller) return;
-  const entry = seller.inventory[itemIdx];
-  const item  = getById(this.data.items, entry?.itemId);
-  if (!entry || !item) return;
-  if (item.type === 'quest') { this.log("Quest items can't be sold."); return; }
-  const earned = (item.sellValue || Math.floor((item.value || 10) * 0.4)) * entry.qty;
-  seller.inventory.splice(itemIdx, 1);
-  vendor.vendorGold = Math.max(0, (vendor.vendorGold || 200) - earned);
-  this.state.resources.credits += earned;
-  this.log(`Sold ${entry.qty}x ${item.name} for ${earned}¢.`);
-  this.renderAll();
-}
-
-// Open vendor UI — called from handleActorPrimary or tile interact
-openVendor(vendorActorId) {
-  const vendor = this.state.roster.find(a => a.id === vendorActorId);
-  if (!vendor?.isVendor) { this.log('Nothing to trade here.'); return; }
-  this.state.activeVendorId = vendorActorId;
-  this.openPanel('inspectPanel');
-  renderVendor(this.state, this.data, this.api, vendor);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// AoE ATTACK RESOLUTION
-// ═══════════════════════════════════════════════════════════════════════
-
-getActorsInRadius(cx, cy, radius, excludeId = null) {
-  return this.state.roster.filter(a =>
-    a.mapId === this.state.mapId && !a.dead && a.id !== excludeId &&
-    distance(a, { x: cx, y: cy }) <= radius
-  );
-}
-
-attackAoE(attacker, cx, cy, ability) {
-  if (!ability || !ability.aoeRadius) return;
-  const costCheck = this.canSpendCost(attacker, ability.costType || 'action', ability);
-  if (!costCheck.ok) { this.log(costCheck.reason); return; }
-
-  const targets = this.getActorsInRadius(cx, cy, ability.aoeRadius, attacker.id);
-  if (!targets.length) this.log(`${ability.name}: no targets in the blast zone.`);
-
-  targets.forEach(target => {
-    const atkBonus = statMod(attacker.stats.agility) + attacker.level + (ability.attackBonus || 0);
-    const roll = rollDice('1d20');
-    const crit = roll.rolls[0] === 20;
-    const hits = crit || (roll.total + atkBonus) >= target.armor;
-    if (hits) {
-      const baseExpr = ability.damage || '1d4';
-      const dmgRoll = rollDice(baseExpr);
-      let dmg = dmgRoll.total + statMod(attacker.stats.might);
-      if (crit) dmg += dmgRoll.total;
-      if (target.shield > 0) { const abs = Math.min(target.shield, dmg); target.shield -= abs; dmg -= abs; }
-      if (dmg > 0) target.hp -= dmg;
-      this.flashActor(target.id, 'entity-hit', 500);
-      this.log(`${target.name} takes ${Math.max(dmg, 0)} from ${ability.name}${crit ? ' (CRIT)' : ''}.`);
-      if (ability.applyStatus && !target.statuses.includes(ability.applyStatus)) target.statuses.push(ability.applyStatus);
-      if (ability.pushDistance) this.applyPush(attacker, target, cx, cy, ability.pushDistance, ability.pushSaveDC, ability.pushSaveAttr);
-      this.handleDeathState(target);
-    } else {
-      this.log(`${ability.name} misses ${target.name}.`);
-    }
-  });
-
-  this.spendAbilityResources(attacker, ability);
-  this.consumeAction(attacker, ability.costType || 'action');
-  attacker.statuses = attacker.statuses.filter(s => s !== 'stealthed');
-  if (!this.state.combat.active) this.startCombat();
-  this.advanceTime(1);
-  this.pendingAction = null;
-  this.renderAll();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PUSH / SHOVE SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-
-attemptShove(attacker, target, ability = null) {
-  if (!attacker || !target || target.dead) return;
-  const costCheck = this.canSpendCost(attacker, ability?.costType || 'action');
-  if (!costCheck.ok) { this.log(costCheck.reason); return; }
-  if (distance(attacker, target) > (ability?.range || 1)) {
-    this.log('Too far to shove. Must be adjacent (1 tile).');
-    return;
-  }
-  const saveDC   = ability?.pushSaveDC   || 12;
-  const proneDC  = ability?.proneSaveDC  || 16;
-  const pushDist = ability?.pushDistance || 3;
-  const saveAttr = ability?.pushSaveAttr || 'might';
-
-  const atkRoll  = rollDice('1d20').total + statMod(attacker.stats.might) + attacker.level;
-  const saveRoll = rollDice('1d20').total + statMod(target.stats[saveAttr] || 10) + target.level;
-  this.log(`Shove: ${attacker.name} rolls ${atkRoll} vs ${target.name} saves ${saveRoll}.`);
-
-  if (atkRoll < saveRoll) {
-    this.log(`${target.name} resists the shove!`);
-  } else {
-    const pushed = this.applyPush(attacker, target, attacker.x, attacker.y, pushDist, saveDC, saveAttr);
-    this.flashActor(target.id, 'entity-hit', 600);
-    if ((atkRoll - saveRoll) >= 5 && !target.statuses.includes('staggered')) {
-      target.statuses.push('staggered');
-      this.log(`${target.name} is knocked prone! (${pushed} tiles pushed)`);
-    } else {
-      this.log(`${target.name} pushed ${pushed} tiles.`);
-    }
-  }
-  this.consumeAction(attacker, ability?.costType || 'action');
-  this.advanceTime(1);
-  this.pendingAction = null;
-  if (!this.state.combat.active) this.startCombat();
-  this.renderAll();
-}
-
-// Move target away from (originX, originY) up to |maxDist| tiles.
-// Negative maxDist = pull toward origin.
-applyPush(attacker, target, originX, originY, maxDist, saveDC = 12, saveAttr = 'might') {
-  const isPull = maxDist < 0;
-  const dist = Math.abs(maxDist);
-  if (dist === 0) return 0;
-  const rawDx = target.x - originX || 0;
-  const rawDy = target.y - originY || (rawDx === 0 ? 1 : 0);
-  const nx = Math.sign(rawDx), ny = Math.sign(rawDy);
-  const pushDx = isPull ? -nx : nx;
-  const pushDy = isPull ? -ny : ny;
-  let pushed = 0;
-  for (let i = 0; i < dist; i++) {
-    const newX = target.x + pushDx, newY = target.y + pushDy;
-    const tile = this.currentMap().tiles[newY]?.[newX];
-    if (!tile || tile.blocked || this.isOccupied(target.mapId, newX, newY, target.id)) {
-      if (pushed > 0) { // wall collision damage
-        const wallDmg = rand(1, 4);
-        target.hp -= wallDmg;
-        this.log(`${target.name} slams into an obstacle for ${wallDmg} damage.`);
-        this.handleDeathState(target);
-      }
-      break;
-    }
-    target.x = newX; target.y = newY;
-    pushed++;
-  }
-  return pushed;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// THROW ITEM SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-
-// Set pending throw — next tile click resolves the throw
-prepareThrow(actorId, itemIdx) {
-  const entry = this.state.roster.find(a => a.id === actorId)?.inventory[itemIdx];
-  const item = entry ? getById(this.data.items, entry.itemId) : null;
-  if (!item?.throwable) { this.log("That item can't be thrown."); return; }
-  this.pendingAction = { type: 'throw', actorId, itemIdx };
-  this.log(`${item.name} readied. Click a tile or target to throw (range: 8).`);
-  this.renderAll();
-}
-
-throwItem(actorId, itemIdx, targetX, targetY) {
-  const actor = this.state.roster.find(a => a.id === actorId);
-  const entry = actor?.inventory[itemIdx];
-  const item  = entry ? getById(this.data.items, entry.itemId) : null;
-  if (!actor || !entry || !item?.throwable) return;
-  const throwRange = 8;
-  if (distance(actor, { x: targetX, y: targetY }) > throwRange) {
-    this.log(`Too far to throw ${item.name}. Max ${throwRange} tiles.`);
-    return;
-  }
-  // Consume item
-  entry.qty--;
-  if (entry.qty <= 0) actor.inventory.splice(itemIdx, 1);
-  const costCheck = this.canSpendCost(actor, 'action');
-  if (costCheck.ok) this.consumeAction(actor, 'action');
-
-  const aoeR = item.throwAoeRadius || 0;
-  const applyStatus = item.throwApplyStatus || null;
-
-  if (aoeR > 0) {
-    const targets = this.getActorsInRadius(targetX, targetY, aoeR, actor.id);
-    targets.forEach(t => {
-      if (item.throwDamage && item.throwDamage !== '0') {
-        let dmg = rollDice(item.throwDamage).total;
-        if (t.shield > 0) { const abs = Math.min(t.shield, dmg); t.shield -= abs; dmg -= abs; }
-        if (dmg > 0) t.hp -= dmg;
-        this.flashActor(t.id, 'entity-hit', 400);
-        this.log(`${t.name} takes ${Math.max(dmg,0)} from ${item.name}.`);
-      }
-      if (applyStatus && !t.statuses.includes(applyStatus)) t.statuses.push(applyStatus);
-      this.handleDeathState(t);
-    });
-    this.log(`${actor.name} throws ${item.name} — ${targets.length} target(s) hit.`);
-  } else {
-    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead);
-    if (t && item.throwDamage && item.throwDamage !== '0') {
-      let dmg = rollDice(item.throwDamage).total;
-      if (t.shield > 0) { const abs = Math.min(t.shield, dmg); t.shield -= abs; dmg -= abs; }
-      if (dmg > 0) t.hp -= dmg;
-      this.flashActor(t.id, 'entity-hit', 400);
-      this.log(`${item.name} hits ${t.name} for ${Math.max(dmg,0)} damage.`);
-      if (applyStatus && !t.statuses.includes(applyStatus)) t.statuses.push(applyStatus);
-      this.handleDeathState(t);
-    } else {
-      this.log(`${actor.name} throws ${item.name}.`);
-    }
-  }
-  // Special throw effects
-  if (item.throwEffect === 'obscure') {
-    for (let dx = -aoeR; dx <= aoeR; dx++) for (let dy = -aoeR; dy <= aoeR; dy++) {
-      const tile = this.currentMap().tiles[targetY + dy]?.[targetX + dx];
-      if (tile) tile.smoke = 2;
-    }
-    this.log('Smoke cloud deployed.');
-  }
-  if (item.throwEffect === 'stasis') {
-    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead);
-    if (t && !t.statuses.includes('staggered')) t.statuses.push('staggered');
-    this.log(`${t?.name || 'Target'} locked in stasis.`);
-  }
-  const victim = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && a.id !== actor.id);
-  if (victim && victim.role !== 'enemy') { this.raiseCrime('assault'); this.witnessCheck(actor, 'assault'); }
-  actor.statuses = actor.statuses.filter(s => s !== 'stealthed');
-  if (!this.state.combat.active && victim) this.startCombat();
-  this.advanceTime(1);
-  this.pendingAction = null;
-  this.renderAll();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// ATTACK PREVIEW (hit chance, range, AoE radius — used by UI on hover)
-// ═══════════════════════════════════════════════════════════════════════
-
-getAttackPreview(attacker, target, ability = null) {
-  const weapon = getById(this.data.items, attacker?.equipped?.mainhand);
-  const atkBonus = attacker
-    ? statMod(attacker.stats.agility) + attacker.level + (weapon?.attackBonus || 0) + (ability?.attackBonus || 0)
-    : 0;
-  const acTarget = target?.armor || 10;
-  const needed = Math.max(1, acTarget - atkBonus);
-  const hitPct = Math.min(95, Math.max(5, Math.floor(((21 - needed) / 20) * 100)));
-  const range  = ability?.range ?? (weapon ? 8 : 1);
-  const inRange = attacker && target ? distance(attacker, target) <= range : false;
-  const dmgExpr = ability?.damage || weapon?.damage || '1d6';
-  const aoeRadius = ability?.aoeRadius || 0;
-  return { hitPct, atkBonus, acTarget, inRange, range, dmgExpr, aoeRadius, abilityName: ability?.name };
-}
-
-setAttackHoverTarget(targetId) {
-  const attacker = this.commandActor();
-  const target = this.state.roster.find(a => a.id === targetId);
-  if (!attacker || !target) { this.pendingAbilityPreview = null; return; }
-  const ability = this.pendingAction?.abilityId
-    ? getById(this.data.abilities, this.pendingAction.abilityId)
-    : null;
-  this.pendingAbilityPreview = this.getAttackPreview(attacker, target, ability);
-}
-
-clearAttackHover() { this.pendingAbilityPreview = null; }
-
-// ═══════════════════════════════════════════════════════════════════════
-// LOCKPICK SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-
-tryLockpick(actor, tileX, tileY) {
-  const tile = this.currentMap().tiles[tileY]?.[tileX];
-  if (!tile?.locked) { this.log('This is not locked.'); return; }
-  const pickIdx = actor.inventory.findIndex(e => e.itemId === 'lockpick');
-  if (pickIdx < 0) {
-    this.log('You need a Lockpick Set. Check vendors or search the area.');
-    return;
-  }
-  const lockDC  = tile.lockDC || 14;
-  const techMod = statMod(actor.stats.tech) + actor.level;
-  this.pendingLockpick = { actor, tileX, tileY, lockDC, techMod, pickIdx };
-  // Set pendingSkillCheck — renderSkillCheckIfPending in ui.js will show the dice roll screen
-  this.state.pendingSkillCheck = {
-    label: `Pick Lock — DC ${lockDC}`,
-    statLabel: `Tech ${techMod >= 0 ? '+' : ''}${techMod}`,
-    dc: lockDC,
-    mod: techMod,
-    resolveKey: 'lockpick'
-  };
-  this.renderAll();
-}
-
-resolveLockpick(roll, pass) {
-  const { actor, tileX, tileY, lockDC, pickIdx } = this.pendingLockpick || {};
-  if (!actor) return;
-  const tile = this.currentMap().tiles[tileY]?.[tileX];
-  this.state.pendingSkillCheck = null;
-  // Consume a charge
-  const pick = actor.inventory[pickIdx];
-  if (pick) { pick.qty--; if (pick.qty <= 0) actor.inventory.splice(pickIdx, 1); }
-  if (pass) {
-    if (tile) { tile.locked = false; this.state.flags[`unlocked_${tileX}_${tileY}`] = true; }
-    this.log('Lock picked! The way is open.');
-  } else {
-    this.log(`Lockpick failed (rolled ${roll} vs DC ${lockDC}). ${pick?.qty > 0 ? `${pick.qty} picks remaining.` : 'Last pick used.'}`);
-    if (tile?.lockAlarm) this.raiseCrime('trespass');
-  }
-  this.pendingLockpick = null;
-  this.renderAll();
-}
-
-// Updated handleLockedTile with lockpick option
-handleLockedTile(actor, x, y, tile) {
-  const reqItem = tile.requiredItem;
-  const options = [];
-  if (reqItem) {
-    const keyIdx = actor.inventory.findIndex(e => e.itemId === reqItem);
-    const item = getById(this.data.items, reqItem);
-    if (keyIdx >= 0) {
-      options.push([`Use ${item?.name || reqItem}`, () => {
-        actor.inventory.splice(keyIdx, 1);
-        tile.locked = false;
-        this.log(`${actor.name} unlocks the door with ${item?.name || reqItem}.`);
-        this.state.flags[`unlocked_${x}_${y}`] = true;
-        this.renderAll();
-        this.moveActorToward(actor, x, y);
-      }]);
-    } else {
-      this.log(`🔒 Locked. Requires: ${item?.name || reqItem}.`);
-    }
-  }
-  const hasPicks = actor.inventory.some(e => e.itemId === 'lockpick');
-  if (hasPicks) options.push([`🔧 Pick Lock (Tech DC ${tile.lockDC || 14})`, () => this.tryLockpick(actor, x, y)]);
-  if (!options.length) { this.log(`🔒 Locked. ${tile.lockHint || 'Find a key or pick the lock.'}`); return; }
-  if (options.length === 1) { options[0][1](); return; }
-  const px = window._lastClickX || window.innerWidth / 2;
-  const py = window._lastClickY || window.innerHeight / 2;
-  this.showContextMenu(px, py, options);
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// PICKPOCKET — uses same pendingSkillCheck pattern as lockpick
-// ═══════════════════════════════════════════════════════════════════════
-
-tryPickpocket(actor) {
-  const thief = this.selectedActor();
-  if (!thief) return;
-  const dc  = 12 + actor.level;
-  const mod = statMod(thief.stats.agility) + (thief.statuses.includes('stealthed') ? 3 : 0) + thief.level;
-  this.pendingPickpocket = { thief, target: actor, dc };
-  this.state.pendingSkillCheck = {
-    label: `Pickpocket ${actor.name} — DC ${dc}`,
-    statLabel: `Agility ${mod >= 0 ? '+' : ''}${mod}`,
-    dc,
-    mod,
-    resolveKey: 'pickpocket'
-  };
-  this.renderAll();
-}
-
-resolvePickpocket(roll, pass) {
-  const { thief, target, dc } = this.pendingPickpocket || {};
-  if (!thief || !target) return;
-  this.pendingPickpocket = null;
-  this.state.pendingSkillCheck = null;
-  if (pass) {
-    const stealable = target.inventory.filter(e => {
-      const it = getById(this.data.items, e.itemId);
-      return it && it.type !== 'quest';
-    });
-    if (stealable.length > 0) {
-      const entry = stealable[Math.floor(Math.random() * stealable.length)];
-      const stolen = deepClone(entry); stolen.qty = 1;
-      thief.inventory.push(stolen);
-      entry.qty--; if (entry.qty <= 0) target.inventory.splice(target.inventory.indexOf(entry), 1);
-      this.log(`${thief.name} steals ${stolen.itemId} from ${target.name}.`);
-    } else {
-      const credits = rand(2, 8);
-      this.state.resources.credits += credits;
-      this.log(`${thief.name} lifts ${credits}¢ from ${target.name}.`);
-    }
-  } else {
-    this.log(`Pickpocket failed (rolled ${roll} vs DC ${dc}). ${target.name} notices!`);
-    this.raiseCrime('theft');
-    this.witnessCheck(thief, 'theft');
-  }
-  this.renderAll();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// NPC VISION CONES & CRIME WITNESS SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-
-npcCanSeeActor(npc, targetActor) {
-  if (!npc || !targetActor || npc.mapId !== targetActor.mapId) return false;
-  const vRange = npc.visionRange || 6;
-  const vAngle = npc.visionAngle || 120;
-  const dist = distance(npc, targetActor);
-  if (dist > vRange) return false;
-  if (targetActor.statuses?.includes('stealthed') && dist > vRange * 0.4) return false;
-  // Cone check
-  const facing = npc.facing || { dx: 0, dy: 1 };
-  const toDx = targetActor.x - npc.x, toDy = targetActor.y - npc.y;
-  if (toDx === 0 && toDy === 0) return true;
-  const mag = Math.sqrt(toDx*toDx + toDy*toDy);
-  const dot = (toDx/mag)*facing.dx + (toDy/mag)*facing.dy;
-  const fmag = Math.sqrt(facing.dx*facing.dx + facing.dy*facing.dy) || 1;
-  const dotNorm = dot / fmag;
-  const angleDeg = Math.acos(Math.max(-1, Math.min(1, dotNorm))) * (180 / Math.PI);
-  if (angleDeg > vAngle / 2) return false;
-  return this.hasLineOfSight(npc.mapId, npc.x, npc.y, targetActor.x, targetActor.y);
-}
-
-hasLineOfSight(mapId, x0, y0, x1, y1) {
-  const map = getById(this.data.maps, mapId);
-  if (!map) return true;
-  const dx = Math.abs(x1-x0), dy = Math.abs(y1-y0);
-  const sx = x0<x1?1:-1, sy = y0<y1?1:-1;
-  let err = dx-dy, cx = x0, cy = y0;
-  while (!(cx===x1 && cy===y1)) {
-    if (cx!==x0||cy!==y0) { const t=map.tiles[cy]?.[cx]; if(t?.blocked) return false; }
-    const e2=2*err;
-    if(e2>-dy){err-=dy;cx+=sx;}
-    if(e2<dx){err+=dx;cy+=sy;}
-  }
-  return true;
-}
-
-witnessCheck(perpetrator, crimeKind) {
-  const witnesses = this.state.roster.filter(a =>
-    a.mapId === this.state.mapId && !a.dead &&
-    !this.state.party.includes(a.id) &&
-    this.npcCanSeeActor(a, perpetrator)
-  );
-  if (!witnesses.length) { this.log('No witnesses.'); return; }
-  witnesses.forEach(npc => {
-    const ai = npc.ai || 'neutral';
-    if (ai === 'guard' || npc.factionId === 'station_civic') {
-      if (npc.role !== 'enemy') {
-        npc.role = 'enemy'; npc.ai = 'aggressive';
-        this.log(`${npc.name} witnesses the crime and turns hostile!`);
-        if (!this.state.combat.active) this.startCombat();
-      }
-    } else {
-      this.log(`${npc.name} sees something alarming!`);
-      if (!npc.statuses) npc.statuses = [];
-      if (!npc.statuses.includes('alarmed')) npc.statuses.push('alarmed');
-      this.raiseCrime(crimeKind);
-    }
-  });
-}
-
-getVisibleNPCCones() {
-  const npcs = this.state.roster.filter(a =>
-    a.mapId === this.state.mapId && !a.dead && !this.state.party.includes(a.id) &&
-    (a.role === 'neutral' || a.role === 'enemy') && (a.visionRange || a.ai === 'guard')
-  );
-  const party = this.state.party.map(id => this.state.roster.find(a => a.id === id)).filter(Boolean);
-  return npcs.map(npc => ({
-    npcId: npc.id, x: npc.x, y: npc.y,
-    facing: npc.facing || { dx: 0, dy: 1 },
-    visionRange: npc.visionRange || 6,
-    visionAngle: npc.visionAngle || 120,
-    alert: party.some(p => this.npcCanSeeActor(npc, p)),
-    ai: npc.ai
-  }));
-}
-
-// Updated raiseCrime with tiered penalties
-  raiseCrime(kind) {
-    this.state.crime.witnessLevel += 1;
-    this.state.flags.crimeAlert = true;
-    const penalty = { murder: -8, assault: -3, theft: -4, trespass: -1 }[kind] || -2;
-    this.state.factions['station_civic'] = (this.state.factions['station_civic'] || 0) + penalty;
-    this.log(`Crime recorded: ${kind}. Civic standing: ${this.state.factions['station_civic']}.`);
-  }
-
-  interactWithActor(id) {
-    const actor = this.state.roster.find(a => a.id === id);    if (!actor) return;
+interactWithActor(id) {
+    const actor = this.state.roster.find(a => a.id === id);
+    if (!actor) return;
     // Save current party selection — never let NPC become selectedActorId
     const prevSelectedId = this.state.party.includes(this.state.selectedActorId)
       ? this.state.selectedActorId
@@ -2242,13 +1713,6 @@ attack(attacker, target, ability = null) {
     if (!partyActors.length) return;
     const target = partyActors.sort((a,b) => distance(actor,a)-distance(actor,b))[0];
     const attackAbility = actor.abilities.map(id => getById(this.data.abilities,id)).find(a => a && a.kind === 'attack');
-
-    // Update NPC facing toward target (used by vision cone rendering)
-    const dx = target.x - actor.x, dy = target.y - actor.y;
-    if (dx !== 0 || dy !== 0) {
-      actor.facing = { dx: Math.sign(dx), dy: Math.sign(dy) };
-    }
-
     if (distance(actor, target) <= 1) {
       this.attack(actor, target, attackAbility?.powerSource ? attackAbility : null);
       return;
@@ -2258,11 +1722,7 @@ attack(attacker, target, ability = null) {
       { x: target.x, y: target.y + 1 }, { x: target.x, y: target.y - 1 }
     ];
     const open = options.map(pos => this.findFreeTileNear(actor.mapId, pos.x, pos.y, actor.id, 1)).find(Boolean);
-    if (open) {
-      // Update facing as AI moves
-      actor.facing = { dx: Math.sign(open.x - actor.x), dy: Math.sign(open.y - actor.y) };
-      this.moveActorToward(actor, open.x, open.y);
-    }
+    if (open) this.moveActorToward(actor, open.x, open.y);
   }
 
   applyRoundEffects() {
@@ -2271,22 +1731,8 @@ attack(attacker, target, ability = null) {
       if (actor.statuses.includes('bleeding')) actor.hp -= 1;
       if (actor.statuses.includes('irradiated')) actor.survival.toxicity = clamp(actor.survival.toxicity + 2, 0, 100);
       if (actor.survival.toxicity >= 100) actor.hp -= 2;
-      // Clear single-round statuses
-      actor.statuses = actor.statuses.filter(s => s !== 'stasis');
       this.handleDeathState(actor);
     });
-
-    // Decrement smoke clouds on tiles
-    const map = this.currentMap();
-    if (map) {
-      map.tiles.forEach(row => row.forEach(tile => {
-        if (tile.smoke > 0) {
-          tile.smoke--;
-          if (tile.smoke === 0) delete tile.smoke;
-        }
-      }));
-    }
-
     const enemiesAlive = this.state.roster.some(a => a.mapId === this.state.mapId && a.role === 'enemy' && !a.dead);
     const partyAlive = this.state.party.some(id => {
       const actor = this.state.roster.find(a => a.id === id);
@@ -2414,6 +1860,28 @@ attack(attacker, target, ability = null) {
     this.log(`${actor.name} joins the active party.`);
     this.checkQuestProgress();
     this.renderAll();
+  }
+
+  tryPickpocket(actor) {
+    const thief = this.selectedActor();
+    const dc = 12 + actor.level;
+    const roll = rollDice('1d20').total + statMod(thief.stats.agility) + (thief.statuses.includes('stealthed') ? 2 : 0);
+    if (roll >= dc) {
+      thief.inventory.push({ itemId: 'credits_chit', qty: rand(1,3) });
+      this.log(`${thief.name} successfully pickpockets ${actor.name}.`);
+    } else {
+      this.raiseCrime('theft');
+      this.log(`Pickpocket attempt failed. ${actor.name} notices.`);
+    }
+    this.renderAll();
+  }
+
+  raiseCrime(kind) {
+    this.state.crime.witnessLevel += 1;
+    this.state.flags.crimeAlert = true;
+    this.log(`Crime detected: ${kind}. Security tension rises.`);
+    const factionPenalty = kind === 'theft' ? -3 : -1;
+    this.state.factions['station_civic'] = (this.state.factions['station_civic'] || 0) + factionPenalty;
   }
 
   travelToSector(nodeId) {
