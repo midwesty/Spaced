@@ -332,7 +332,7 @@
    "pack": null
   },
   "bio": "This guy is shady, but has good luck finding things that \"fell off a truck\".",
-  "dialogueId": "Shady_Sam_Intro",
+  "dialogueId": "node_1777663705389",
   "appearance": {
    "skin": "#b88e74",
    "hair": "#2f3d5a",
@@ -346,7 +346,7 @@
    "dx": -1,
    "dy": 0
   },
-  "repeatDialogueId": "Shady_Sam_Intro",
+  "repeatDialogueId": "node_1777663705389",
   "ambientDialogue": [
    "My wife is gonna be pissed!"
   ],

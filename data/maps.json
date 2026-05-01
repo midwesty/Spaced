@@ -8655,7 +8655,7 @@
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false,
+     "interact": true,
      "zone": "hostile_reaver"
     },
     {
