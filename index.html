@@ -140,7 +140,7 @@
         <!-- Zoom / map controls — now in HUD top, not floating over map -->
         <div id="mapControls">
           <button id="zoomOutBtn" title="Zoom out">−</button>
-          <button id="zoomInBtn" title="Zoom in">+</button>
+          <button id="zoomInBtn"  title="Zoom in">+</button>
           <button id="recenterBtn" title="Center on party">⌖</button>
           <button id="endTurnBtn" class="combat-only" title="End turn">End Turn</button>
         </div>
@@ -258,11 +258,6 @@
 
   </div><!-- #gameRoot -->
 
-  <!-- IMPORTANT:
-       This must be the ONLY direct JavaScript file loaded by the HTML.
-       Do not add script tags for engine.js, data.js, ui.js, state.js, utils.js, or CardTable.js.
-       Those files are modules and are imported by main.js / engine.js.
-  -->
-  <script type="module" src="js/main.js?v=20260501"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
