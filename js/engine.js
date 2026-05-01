@@ -154,6 +154,11 @@ export class GameEngine {
       if (c.visionAngle)  actor.visionAngle  = c.visionAngle;
       if (c.facing)       actor.facing       = deepClone(c.facing);
 
+      // Ensure all party-eligible companions have shove
+      if (c.role === 'ally' && !actor.abilities.includes('shove')) {
+        actor.abilities.push('shove');
+      }
+
       this.state.roster.push(actor);
       this.state.relationship[actor.id] = { affinity: actor.affinity || 0, romance: 0, flags: [] };
     });
@@ -1637,6 +1642,7 @@ interactWithActor(id) {
   }
 
   inspectActor(actor) {
+    this.state.activeVendorId = null; // always clear vendor mode when inspecting
     renderInspect(this.state, this.data, `
       <div class="card">
         <strong>${actor.name}</strong>
@@ -1651,6 +1657,7 @@ interactWithActor(id) {
   }
 
   inspectTile(x, y) {
+    this.state.activeVendorId = null; // always clear vendor mode when looting
     const tile = this.currentMap().tiles[y]?.[x];
     if (!tile) return;
     const title = tile.containerName || tile.interactText || `Tile (${x}, ${y})`;
@@ -1751,10 +1758,12 @@ interactWithActor(id) {
       </div>
     `);
     this.openPanel('inspectPanel');
-    if (item) $('#unequipSlotBtn').onclick = () => this.unequipSlot(actorId, slot);
+    if (item) $('#unequipSlotBtn')?.addEventListener('click', () => this.unequipSlot(actorId, slot));
   }
 
   inspectInventoryItem(actorId, idx, x = 200, y = 200, forceContext = false) {
+    // Always clear vendor mode when opening inventory inspect
+    this.state.activeVendorId = null;
     const actor = this.state.roster.find(a => a.id === actorId);
     const entry = actor?.inventory[idx];
     const item = entry ? getById(this.data.items, entry.itemId) : null;
@@ -1789,6 +1798,7 @@ interactWithActor(id) {
     const btnUse    = isConsumable ? `<button id="invUseBtn">Use</button>` : '';
     const btnEquip  = isEquippable ? `<button id="invEquipBtn">Equip → ${item.slot}</button>` : '';
     const btnRename = isContainer  ? `<button id="invRenameBtn">Rename</button>` : '';
+    const btnThrow  = item.throwable ? `<button id="invThrowBtn">🎯 Throw</button>` : '';
 
     // Build "Send To" options: cargo + each other party member
     const otherParty = this.state.party
@@ -1806,7 +1816,7 @@ interactWithActor(id) {
         <p>${item.description}</p>
         ${statsHtml}
         <div class="row-wrap" style="margin-top:10px">
-          ${btnUse}${btnEquip}
+          ${btnUse}${btnEquip}${btnThrow}
           <div class="send-to-wrap">
             <span class="small" style="margin-right:4px">Send To:</span>
             <select id="invSendToSel">${sendToOptions}</select>
@@ -1818,18 +1828,19 @@ interactWithActor(id) {
       </div>
     `);
     this.openPanel('inspectPanel');
-    if (isConsumable) $('#invUseBtn').onclick   = () => this.useItem(actor, idx);
-    if (isEquippable) $('#invEquipBtn').onclick  = () => this.equipItem(actor, idx);
-    if (isContainer)  $('#invRenameBtn').onclick = () => this.renameItemStack(actor, idx);
-    $('#invSendToBtn').onclick = () => {
+    if (isConsumable) $('#invUseBtn')?.addEventListener('click', () => this.useItem(actor, idx));
+    if (isEquippable) $('#invEquipBtn')?.addEventListener('click', () => this.equipItem(actor, idx));
+    if (isContainer)  $('#invRenameBtn')?.addEventListener('click', () => this.renameItemStack(actor, idx));
+    if (item.throwable) $('#invThrowBtn')?.addEventListener('click', () => {
+      this.prepareThrow(actor.id, idx);
+      $('#inspectPanel')?.classList.add('hidden');
+    });
+    $('#invSendToBtn')?.addEventListener('click', () => {
       const dest = document.getElementById('invSendToSel')?.value;
-      if (dest === 'cargo') {
-        this.sendItemToCargo(actor, idx);
-      } else if (dest) {
-        this.sendItemToActor(actor.id, idx, dest);
-      }
-    };
-    $('#invDropBtn').onclick  = () => this.dropItem(actor, idx);
+      if (dest === 'cargo') this.sendItemToCargo(actor, idx);
+      else if (dest) this.sendItemToActor(actor.id, idx, dest);
+    });
+    $('#invDropBtn')?.addEventListener('click', () => this.dropItem(actor, idx));
   }
 
   equipItem(actor, idx) {
@@ -1880,13 +1891,13 @@ interactWithActor(id) {
       </div>
     `);
     this.openPanel('inspectPanel');
-    $('#pullCargoBtn').onclick = () => {
+    $('#pullCargoBtn')?.addEventListener('click', () => {
       const actor = this.selectedActor();
       actor.inventory.push(entry);
       this.state.ship.cargo.splice(idx, 1);
       this.log(`${actor.name} takes ${entry.itemId} from ship cargo.`);
       this.renderAll();
-    };
+    });
   }
 
 
@@ -1999,8 +2010,8 @@ attack(attacker, target, ability = null) {
       return;
     }
 
-    // If target is neutral or ally (not already enemy), make them hostile
-    if (target.role !== 'enemy') {
+    // If target is neutral (not already enemy, not a party member), make them hostile
+    if (target.role !== 'enemy' && !this.state.party.includes(target.id)) {
       target.role = 'enemy';
       target.ai = 'aggressive';
       this.raiseCrime('assault');

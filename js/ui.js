@@ -510,6 +510,28 @@ export function renderActionBar(state, data, api) {
   // Build bonus action list
   const bonusList = [];
   bonusList.push({ label: '🧪 Use Item', desc: 'Use a consumable from your inventory.', fn: () => { $('#inventoryPanel')?.classList.remove('hidden'); } });
+  bonusList.push({ label: '🎯 Throw Item', desc: 'Throw any throwable item at a target tile (range 8).', fn: () => {
+    // Find throwable items in actor inventory
+    const throwables = (actor.inventory || []).map((e, i) => {
+      const it = getById(data.items, e.itemId);
+      return it?.throwable ? { entry: e, item: it, idx: i } : null;
+    }).filter(Boolean);
+    if (!throwables.length) {
+      api.log?.('No throwable items in inventory.');
+      return;
+    }
+    // Show quick pick if multiple, or direct prepare if one
+    if (throwables.length === 1) {
+      api.prepareThrow?.(actor.id, throwables[0].idx);
+    } else {
+      // Show a mini context menu to pick which item
+      const opts = throwables.map(t => [
+        `${t.item.name} ×${t.entry.qty}`,
+        () => api.prepareThrow?.(actor.id, t.idx)
+      ]);
+      api.showContextMenu?.(window.innerWidth/2, window.innerHeight/2, opts);
+    }
+  }});
   if (inCombat) {
     bonusList.push({ label: '🩹 Second Wind', desc: 'Regain 1d6+level HP (once per rest).', fn: () => {
       if (actor._secondWindUsed) { api.log?.('Already used Second Wind this rest.'); return; }
@@ -525,10 +547,17 @@ export function renderActionBar(state, data, api) {
       api.setPendingAction('attack');
     }});
   }
-  bonusList.push({ label: '👣 Sneak', desc: 'Slip into stealth.', fn: () => {
-    if (!actor.statuses.includes('stealthed')) actor.statuses.push('stealthed');
+  bonusList.push({ label: actor.statuses.includes('stealthed') ? '👁 Un-hide' : '👣 Sneak', desc: 'Toggle stealth on or off.', fn: () => {
+    const nowStealthed = actor.statuses.includes('stealthed');
+    if (nowStealthed) {
+      actor.statuses = actor.statuses.filter(s => s !== 'stealthed');
+      api.log?.(`${actor.name} leaves stealth.`);
+    } else {
+      actor.statuses.push('stealthed');
+      api.log?.(`${actor.name} enters stealth.`);
+    }
     if (inCombat) state.combat.bonusActed[actor.id] = true;
-    api.renderAll(); api.log?.(`${actor.name} enters stealth.`);
+    api.renderAll();
   }});
   bonusList.push({ label: '🗣 Rally', desc: 'Inspire an ally with a shout.', fn: () => {
     if (inCombat) state.combat.bonusActed[actor.id] = true;
@@ -1456,17 +1485,8 @@ export function renderSkillCheckIfPending(state, data, api) {
 export function renderInspect(state, data, html) {
   const root = $('#inspectBody');
   if (!root) return;
-
-  // If a vendor is active, show vendor UI instead
-  if (state?.activeVendorId) {
-    const vendor = state.roster?.find(a => a.id === state.activeVendorId);
-    if (vendor && data) {
-      // renderVendor will be called from the engine via openVendor,
-      // but if renderAll triggers renderInspect while vendor is open, preserve vendor view
-      return;
-    }
-  }
-
+  // Only preserve vendor view if the inspect panel is open AND showing vendor content
+  // If html is being explicitly set, always render it (activeVendorId cleared by callers)
   root.innerHTML = html;
 }
 

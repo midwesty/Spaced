@@ -205,7 +205,7 @@
     "id": "shove",
     "name": "Shove",
     "kind": "push",
-    "costType": "action",
+    "costType": "bonus",
     "range": 1,
     "aoeRadius": 0,
     "throwable": false,
