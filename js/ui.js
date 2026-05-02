@@ -136,13 +136,16 @@ export function renderPartyStrip(state, data, api) {
       <div class="bar"><div class="fill" style="width:${actor.survival?.hunger ?? 0}%;background:#ffcc6b"></div></div>
       <div class="small">🍖${Math.round(actor.survival?.hunger ?? 0)} 💧${Math.round(actor.survival?.thirst ?? 0)} ♥${Math.round(actor.survival?.morale ?? 0)}</div>
     `;
-    // Status icon strip along right edge
+    // Status icon strip — rendered INSIDE the card along the right edge
     if (actor.statuses?.length) {
       const iconStrip = createEl('div', { class: 'party-status-strip' });
       actor.statuses.forEach(statusId => {
         const statusDef = data.statuses?.find(s => s.id === statusId);
         const emoji = STATUS_ICONS[statusId] || '●';
-        const iconEl = createEl('div', { class: 'party-status-icon', title: statusDef ? `${statusDef.name}: ${statusDef.description}` : statusId });
+        const iconEl = createEl('div', {
+          class: 'party-status-icon',
+          title: statusDef ? `${statusDef.name}: ${statusDef.description}` : statusId
+        });
         iconEl.textContent = emoji;
         iconStrip.appendChild(iconEl);
       });
