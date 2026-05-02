@@ -173,6 +173,7 @@ export function renderMap(state, data, api) {
         if (t.cover)    cls += ' cover';
         if (t.locked)   cls += ' tile-locked';
         if (t.smoke > 0) cls += ' smoky';
+        if (t.stasis > 0) cls += ' stasis-field';
         if (t.gameTable)       cls += ' game-table';
         if (t.transition)      cls += ' tile-door';
         else if (t.loot)       cls += ' tile-loot';
@@ -198,6 +199,20 @@ export function renderMap(state, data, api) {
       if (revealed) {
         tile.addEventListener('click',       e => api.handleTileClick(x, y, e));
         tile.addEventListener('contextmenu', e => { e.preventDefault(); api.handleTileContext(x, y, e); });
+        // AoE preview when hovering with a pending throw action
+        tile.addEventListener('mouseenter', () => {
+          const pending = api.getPendingAction?.();
+          if (pending?.type === 'throw') {
+            const actor = state.roster.find(a => a.id === pending.actorId);
+            const entry = actor?.inventory[pending.itemIdx];
+            const item  = entry ? api.getItemById?.(entry.itemId) : null;
+            if (item?.throwAoeRadius > 0) renderAoEPreview(x, y, item.throwAoeRadius, size);
+          }
+        });
+        tile.addEventListener('mouseleave', () => {
+          const pending = api.getPendingAction?.();
+          if (pending?.type === 'throw') clearAoEPreview();
+        });
       }
       tileLayer.appendChild(tile);
     }
@@ -241,6 +256,14 @@ export function renderMap(state, data, api) {
       showTileTooltip(tipText, e.clientX, e.clientY);
       // Show AoE ring if relevant
       if (preview?.aoeRadius > 0) renderAoEPreview(actor.x, actor.y, preview.aoeRadius, size);
+      // Show throw AoE preview
+      const pending = api.getPendingAction?.();
+      if (pending?.type === 'throw') {
+        const thrower = state.roster.find(a => a.id === pending.actorId);
+        const entry = thrower?.inventory[pending.itemIdx];
+        const item = entry ? api.getItemById?.(entry.itemId) : null;
+        if (item?.throwAoeRadius > 0) renderAoEPreview(actor.x, actor.y, item.throwAoeRadius, size);
+      }
     });
     ent.addEventListener('mousemove', e => {
       const preview = api.pendingAbilityPreview ?? null;

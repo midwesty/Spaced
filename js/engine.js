@@ -101,6 +101,8 @@ export class GameEngine {
       // Throw
       prepareThrow: (actorId, itemIdx) => this.prepareThrow(actorId, itemIdx),
       throwItem: (actorId, itemIdx, tx, ty) => this.throwItem(actorId, itemIdx, tx, ty),
+      getPendingAction: () => this.pendingAction,
+      getItemById: (itemId) => getById(this.data.items, itemId),
       // Lockpick
       tryLockpick: (actor, tx, ty) => this.tryLockpick(actor, tx, ty),
       resolveLockpick: (roll, pass) => this.resolveLockpick(roll, pass),
@@ -692,6 +694,12 @@ populateCreator() {
     const actionType = this.pendingActionType();
 
     // If a pending action mode is active, resolve it
+    if (actionType === 'throw') {
+      // Throw directly at the actor's tile position
+      const { actorId, itemIdx } = this.pendingAction;
+      this.pendingAction = null;
+      return this.throwItem(actorId, itemIdx, actor.x, actor.y);
+    }
     if (actionType === 'attack') {
       const commandActor = this.commandActor();
       if (!commandActor || commandActor.id === actor.id) return this.log('Choose another target.');
@@ -920,7 +928,11 @@ populateCreator() {
       this.moving = false;
       this.pendingAction = null;
       this.renderAll();
-      this.startEncounter(encId);
+      // Sync party formation first so followers arrive before combat starts
+      if (this.state.party.includes(actor.id) && this.state.partyControl.follow) {
+        this.syncPartyFormation(actor);
+      }
+      setTimeout(() => this.startEncounter(encId), 200);
       return; // stop walking, combat takes over
     }
 
@@ -1195,7 +1207,8 @@ attackAoE(attacker, cx, cy, ability) {
 
 attemptShove(attacker, target, ability = null) {
   if (!attacker || !target || target.dead) return;
-  const costCheck = this.canSpendCost(attacker, ability?.costType || 'action');
+  const costType = ability?.costType || 'bonus';
+  const costCheck = this.canSpendCost(attacker, costType);
   if (!costCheck.ok) { this.log(costCheck.reason); return; }
   if (distance(attacker, target) > (ability?.range || 1)) {
     this.log('Too far to shove. Must be adjacent (1 tile).');
@@ -1222,7 +1235,7 @@ attemptShove(attacker, target, ability = null) {
       this.log(`${target.name} pushed ${pushed} tiles.`);
     }
   }
-  this.consumeAction(attacker, ability?.costType || 'action');
+  this.consumeAction(attacker, costType);
   this.advanceTime(1);
   this.pendingAction = null;
   if (!this.state.combat.active) this.startCombat();
@@ -1286,11 +1299,19 @@ throwItem(actorId, itemIdx, targetX, targetY) {
   // Consume item
   entry.qty--;
   if (entry.qty <= 0) actor.inventory.splice(itemIdx, 1);
-  const costCheck = this.canSpendCost(actor, 'action');
-  if (costCheck.ok) this.consumeAction(actor, 'action');
+  const costCheck = this.canSpendCost(actor, 'bonus');
+  if (costCheck.ok) this.consumeAction(actor, 'bonus');
+  else {
+    const costCheck2 = this.canSpendCost(actor, 'action');
+    if (costCheck2.ok) this.consumeAction(actor, 'action');
+  }
 
   const aoeR = item.throwAoeRadius || 0;
   const applyStatus = item.throwApplyStatus || null;
+  const hitSummary = [];
+
+  // Show blast visual on effectLayer
+  this.showBlastEffect(targetX, targetY, aoeR);
 
   if (aoeR > 0) {
     const targets = this.getActorsInRadius(targetX, targetY, aoeR, actor.id);
@@ -1299,40 +1320,65 @@ throwItem(actorId, itemIdx, targetX, targetY) {
         let dmg = rollDice(item.throwDamage).total;
         if (t.shield > 0) { const abs = Math.min(t.shield, dmg); t.shield -= abs; dmg -= abs; }
         if (dmg > 0) t.hp -= dmg;
+        this.flashActor(t.id, 'entity-hit', 500);
+        hitSummary.push(`${t.name} (${Math.max(dmg,0)} dmg)`);
+      } else {
         this.flashActor(t.id, 'entity-hit', 400);
-        this.log(`${t.name} takes ${Math.max(dmg,0)} from ${item.name}.`);
+        hitSummary.push(t.name);
       }
       if (applyStatus && !t.statuses.includes(applyStatus)) t.statuses.push(applyStatus);
       this.handleDeathState(t);
     });
-    this.log(`${actor.name} throws ${item.name} — ${targets.length} target(s) hit.`);
+    if (hitSummary.length) {
+      this.log(`${actor.name} throws ${item.name} — hits: ${hitSummary.join(', ')}.`);
+    } else {
+      this.log(`${actor.name} throws ${item.name} — no targets in blast radius.`);
+    }
   } else {
-    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead);
+    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead && a.id !== actor.id);
     if (t && item.throwDamage && item.throwDamage !== '0') {
       let dmg = rollDice(item.throwDamage).total;
       if (t.shield > 0) { const abs = Math.min(t.shield, dmg); t.shield -= abs; dmg -= abs; }
       if (dmg > 0) t.hp -= dmg;
-      this.flashActor(t.id, 'entity-hit', 400);
-      this.log(`${item.name} hits ${t.name} for ${Math.max(dmg,0)} damage.`);
+      this.flashActor(t.id, 'entity-hit', 500);
+      this.log(`${actor.name} throws ${item.name} — hits ${t.name} for ${Math.max(dmg,0)} damage.`);
       if (applyStatus && !t.statuses.includes(applyStatus)) t.statuses.push(applyStatus);
       this.handleDeathState(t);
     } else {
       this.log(`${actor.name} throws ${item.name}.`);
     }
   }
+
   // Special throw effects
   if (item.throwEffect === 'obscure') {
     for (let dx = -aoeR; dx <= aoeR; dx++) for (let dy = -aoeR; dy <= aoeR; dy++) {
-      const tile = this.currentMap().tiles[targetY + dy]?.[targetX + dx];
-      if (tile) tile.smoke = 2;
+      if (Math.abs(dx) + Math.abs(dy) <= aoeR) {
+        const tile = this.currentMap().tiles[targetY + dy]?.[targetX + dx];
+        if (tile) {
+          tile.smoke = 3; // 3 rounds duration
+          // Apply blinded to any actors already on smoky tiles
+          const onTile = this.state.roster.filter(a => a.mapId === this.state.mapId && !a.dead && a.x === targetX+dx && a.y === targetY+dy);
+          onTile.forEach(a => { if (!a.statuses.includes('blinded')) a.statuses.push('blinded'); });
+        }
+      }
     }
-    this.log('Smoke cloud deployed.');
+    this.log('Smoke cloud deployed — actors inside are blinded.');
   }
   if (item.throwEffect === 'stasis') {
-    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead);
-    if (t && !t.statuses.includes('staggered')) t.statuses.push('staggered');
-    this.log(`${t?.name || 'Target'} locked in stasis.`);
+    const t = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && !a.dead && a.id !== actor.id);
+    if (t) {
+      if (!t.statuses.includes('staggered')) t.statuses.push('staggered');
+      // Mark tile for stasis visual
+      const tile = this.currentMap().tiles[targetY]?.[targetX];
+      if (tile) tile.stasis = 2;
+      this.log(`${t.name} locked in stasis.`);
+    } else {
+      const tile = this.currentMap().tiles[targetY]?.[targetX];
+      if (tile) tile.stasis = 2;
+      this.log('Stasis field deployed.');
+    }
   }
+
   const victim = this.state.roster.find(a => a.mapId === this.state.mapId && a.x === targetX && a.y === targetY && a.id !== actor.id);
   if (victim && victim.role !== 'enemy') { this.raiseCrime('assault'); this.witnessCheck(actor, 'assault'); }
   actor.statuses = actor.statuses.filter(s => s !== 'stealthed');
@@ -1340,6 +1386,24 @@ throwItem(actorId, itemIdx, targetX, targetY) {
   this.advanceTime(1);
   this.pendingAction = null;
   this.renderAll();
+}
+
+showBlastEffect(cx, cy, radius = 0) {
+  const size = this.data.config.map.tileSize;
+  const effectLayer = document.getElementById('effectLayer');
+  if (!effectLayer) return;
+  const el = document.createElement('div');
+  el.className = 'blast-effect';
+  const displayR = Math.max(radius, 0.5);
+  const px = (cx - displayR) * size;
+  const py = (cy - displayR) * size;
+  const sz = (displayR * 2 + 1) * size;
+  el.style.left   = `${px}px`;
+  el.style.top    = `${py}px`;
+  el.style.width  = `${sz}px`;
+  el.style.height = `${sz}px`;
+  effectLayer.appendChild(el);
+  setTimeout(() => el.remove(), 700);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1707,12 +1771,30 @@ interactWithActor(id) {
   showActorContext(id, x, y) {
     const actor = this.state.roster.find(a => a.id === id);
     if (!actor) return;
-    this.showContextMenu(x, y, [
-      ['Talk / Inspect', () => this.interactWithActor(id)],
-      ['Attack', () => this.attack(this.selectedActor(), actor)],
-      ['Pickpocket', () => this.tryPickpocket(actor)],
-      ['Mark Follow / Join', () => this.tryRecruit(actor)],
-    ]);
+    const commander = this.commandActor();
+    const inRange = commander ? this.isInRange(commander, actor.x, actor.y, 5) : false;
+
+    // Resolve pending throw on right-click actor too
+    if (this.pendingActionType() === 'throw') {
+      const { actorId, itemIdx } = this.pendingAction;
+      this.pendingAction = null;
+      return this.throwItem(actorId, itemIdx, actor.x, actor.y);
+    }
+
+    const options = [];
+    const isPartyMember = this.state.party.includes(actor.id);
+
+    if (inRange && actor.dialogueId) options.push(['Talk / Inspect', () => this.interactWithActor(id)]);
+    if (inRange && actor.isVendor) options.push(['🛒 Trade', () => this.openVendor(id)]);
+    if (!isPartyMember) {
+      if (this.state.combat.active && inRange) options.push(['Attack', () => this.attack(commander, actor)]);
+      if (this.state.combat.active && inRange) options.push(['Shove', () => this.attemptShove(commander, actor)]);
+      if (inRange && actor.role === 'neutral') options.push(['Pickpocket', () => this.tryPickpocket(actor)]);
+      if (actor.role === 'ally' && inRange) options.push(['Recruit', () => this.tryRecruit(actor)]);
+    }
+    if (!inRange) options.push(['Too far — move closer', () => this.log(`Move within 5 tiles of ${actor.name}.`)]);
+
+    if (options.length > 0) this.showContextMenu(x, y, options);
   }
 
   showContextMenu(x, y, options) {
@@ -2319,13 +2401,34 @@ attack(attacker, target, ability = null) {
       this.handleDeathState(actor);
     });
 
-    // Decrement smoke clouds on tiles
+    // Decrement smoke and stasis tiles, apply/remove blinded
     const map = this.currentMap();
     if (map) {
-      map.tiles.forEach(row => row.forEach(tile => {
+      map.tiles.forEach((row, ty) => row.forEach((tile, tx) => {
         if (tile.smoke > 0) {
           tile.smoke--;
-          if (tile.smoke === 0) delete tile.smoke;
+          if (tile.smoke === 0) {
+            delete tile.smoke;
+            // Remove blinded from actors that are no longer in smoke
+            this.state.roster.forEach(a => {
+              if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+                // Only remove blinded if no adjacent smoke tile still affects them
+                const stillSmoked = map.tiles[ty]?.[tx]?.smoke > 0;
+                if (!stillSmoked) a.statuses = a.statuses.filter(s => s !== 'blinded');
+              }
+            });
+          } else {
+            // Apply blinded to any actors on smoky tiles this round
+            this.state.roster.forEach(a => {
+              if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+                if (!a.statuses.includes('blinded')) a.statuses.push('blinded');
+              }
+            });
+          }
+        }
+        if (tile.stasis > 0) {
+          tile.stasis--;
+          if (tile.stasis === 0) delete tile.stasis;
         }
       }));
     }
