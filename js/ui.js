@@ -94,6 +94,27 @@ export function renderTopHUD(state, data) {
 }
 
 // ─── PARTY STRIP ──────────────────────────────────────────────────────────────
+// ─── STATUS ICON MAP ─────────────────────────────────────────────────────────
+// Maps status ID → emoji icon shown on party strip and inventory panel
+const STATUS_ICONS = {
+  stealthed:        '👣',
+  bleeding:         '🩸',
+  irradiated:       '☢',
+  staggered:        '💫',
+  inspired:         '⚡',
+  fortified:        '🛡',
+  steadfast:        '💪',
+  hasted:           '⚡',
+  shaken:           '😨',
+  blinded:          '🌫',
+  bloated:          '🤢',
+  'scarred-survivor':'🪖',
+  'clean-killer':   '🗡',
+  'saint-of-nowhere':'🕊',
+  'void-touched':   '🌀',
+  dodging:          '↩',
+};
+
 export function renderPartyStrip(state, data, api) {
   const root = $('#partyStrip');
   if (!root) return;
@@ -106,6 +127,7 @@ export function renderPartyStrip(state, data, api) {
     const card = createEl('div', {
       class: `party-card ${state.selectedActorId === actor.id ? 'selected' : ''} ${isAI ? 'ai-acting-card' : ''}`
     });
+    card.style.position = 'relative';
     card.innerHTML = `
       <div class="row"><strong>${actor.name}</strong><span class="small">${actor.classId}${isAI ? ' ◉' : ''}</span></div>
       <div class="small">${actor.speciesId} · Lv ${actor.level}</div>
@@ -114,6 +136,18 @@ export function renderPartyStrip(state, data, api) {
       <div class="bar"><div class="fill" style="width:${actor.survival?.hunger ?? 0}%;background:#ffcc6b"></div></div>
       <div class="small">🍖${Math.round(actor.survival?.hunger ?? 0)} 💧${Math.round(actor.survival?.thirst ?? 0)} ♥${Math.round(actor.survival?.morale ?? 0)}</div>
     `;
+    // Status icon strip along right edge
+    if (actor.statuses?.length) {
+      const iconStrip = createEl('div', { class: 'party-status-strip' });
+      actor.statuses.forEach(statusId => {
+        const statusDef = data.statuses?.find(s => s.id === statusId);
+        const emoji = STATUS_ICONS[statusId] || '●';
+        const iconEl = createEl('div', { class: 'party-status-icon', title: statusDef ? `${statusDef.name}: ${statusDef.description}` : statusId });
+        iconEl.textContent = emoji;
+        iconStrip.appendChild(iconEl);
+      });
+      card.appendChild(iconStrip);
+    }
     card.addEventListener('click', () => {
       state.selectedActorId = actor.id;
       api.centerOnActor(actor);
@@ -227,10 +261,14 @@ export function renderMap(state, data, api) {
 
     const isAI      = state.combat.aiActingId === actor.id;
     const isCurrent = state.combat.active && state.combat.turnOrder[state.combat.currentTurnIndex] === actor.id;
+    const map = data.maps.find(m => m.id === state.mapId);
+    const actorTile = map?.tiles[actor.y]?.[actor.x];
+    const inSmoke = actorTile?.smoke > 0;
     let cls = `entity ${actor.role}`;
     if (actor.downed)                         cls += ' down';
     if (state.selectedActorId === actor.id)   cls += ' selected';
     if (actor.statuses.includes('stealthed')) cls += ' stealthed';
+    if (inSmoke)                              cls += ' in-smoke';
     if (isAI)                                 cls += ' ai-acting';
     if (isCurrent && !isAI)                   cls += ' current-turn';
 
@@ -533,27 +571,10 @@ export function renderActionBar(state, data, api) {
   // Build bonus action list
   const bonusList = [];
   bonusList.push({ label: '🧪 Use Item', desc: 'Use a consumable from your inventory.', fn: () => { $('#inventoryPanel')?.classList.remove('hidden'); } });
-  bonusList.push({ label: '🎯 Throw Item', desc: 'Throw any throwable item at a target tile (range 8).', fn: () => {
-    // Find throwable items in actor inventory
-    const throwables = (actor.inventory || []).map((e, i) => {
-      const it = getById(data.items, e.itemId);
-      return it?.throwable ? { entry: e, item: it, idx: i } : null;
-    }).filter(Boolean);
-    if (!throwables.length) {
-      api.log?.('No throwable items in inventory.');
-      return;
-    }
-    // Show quick pick if multiple, or direct prepare if one
-    if (throwables.length === 1) {
-      api.prepareThrow?.(actor.id, throwables[0].idx);
-    } else {
-      // Show a mini context menu to pick which item
-      const opts = throwables.map(t => [
-        `${t.item.name} ×${t.entry.qty}`,
-        () => api.prepareThrow?.(actor.id, t.idx)
-      ]);
-      api.showContextMenu?.(window.innerWidth/2, window.innerHeight/2, opts);
-    }
+  bonusList.push({ label: '🎯 Throw Item', desc: 'Select a throwable item from your inventory.', fn: () => {
+    // Open inventory so the player can choose what to throw from there
+    api.openPanel?.('inventoryPanel');
+    api.log?.('Select a throwable item from your inventory to throw.');
   }});
   if (inCombat) {
     bonusList.push({ label: '🩹 Second Wind', desc: 'Regain 1d6+level HP (once per rest).', fn: () => {
@@ -928,6 +949,30 @@ export function renderInventory(state, data, api) {
       root.appendChild(createEl('div', { class: 'card' }, '<div class="small">No party member selected.</div>'));
       return;
     }
+
+    // ── Active Conditions / Status strip ──
+    if (actor.statuses?.length) {
+      const condCard = createEl('div', { class: 'card', style: 'margin-bottom:8px' });
+      const condTitle = createEl('div', { class: 'small', style: 'font-weight:600;margin-bottom:6px;color:var(--accent2,#79d4ff)' }, 'Active Conditions');
+      condCard.appendChild(condTitle);
+      const condRow = createEl('div', { style: 'display:flex;flex-wrap:wrap;gap:6px' });
+      actor.statuses.forEach(statusId => {
+        const statusDef = data.statuses?.find(s => s.id === statusId);
+        const emoji = STATUS_ICONS[statusId] || '●';
+        const chip = createEl('div', { class: 'status-chip', style: 'position:relative;cursor:default' });
+        chip.innerHTML = `<span class="status-chip-icon">${emoji}</span><span class="status-chip-label">${statusDef?.name || statusId}</span>`;
+        // Hover tooltip showing description
+        const tip = createEl('div', { class: 'status-chip-tip hidden' });
+        tip.innerHTML = `<strong>${statusDef?.name || statusId}</strong><br>${statusDef?.description || ''}`;
+        chip.appendChild(tip);
+        chip.addEventListener('mouseenter', () => tip.classList.remove('hidden'));
+        chip.addEventListener('mouseleave', () => tip.classList.add('hidden'));
+        condRow.appendChild(chip);
+      });
+      condCard.appendChild(condRow);
+      root.appendChild(condCard);
+    }
+
     const [eqCol, bagCol] = renderInvBag(actor, state, data, api);
     wrap.append(eqCol, bagCol);
     root.appendChild(wrap);

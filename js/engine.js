@@ -2446,9 +2446,41 @@ attack(attacker, target, ability = null) {
 
   advanceTime(minutes) {
     this.state.timeMinutes += minutes;
-    if (!this.state.combat.active) this.tickSurvival(minutes);
+    if (!this.state.combat.active) {
+      this.tickSurvival(minutes);
+      // Out-of-combat: advance timed tile effects (smoke, stasis) using wall-clock seconds
+      // 1 round = 10 seconds = 1/6 minute. minutes passed → rounds equivalent
+      const roundsElapsed = minutes / (10 / 60); // 10 seconds per round
+      this.tickTimedTileEffects(roundsElapsed);
+    }
     this.handleScheduledEvents();
     this.renderAll();
+  }
+
+  // Decrement smoke/stasis tiles by fractional rounds when called outside of applyRoundEffects
+  // (applyRoundEffects handles in-combat decrements each round)
+  tickTimedTileEffects(rounds) {
+    if (rounds <= 0) return;
+    const map = this.currentMap();
+    if (!map) return;
+    map.tiles.forEach((row, ty) => row.forEach((tile, tx) => {
+      if (tile.smoke > 0) {
+        tile.smoke = Math.max(0, tile.smoke - rounds);
+        if (tile.smoke <= 0) {
+          delete tile.smoke;
+          // Remove blinded from actors on cleared smoke tiles
+          this.state.roster.forEach(a => {
+            if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+              a.statuses = a.statuses.filter(s => s !== 'blinded');
+            }
+          });
+        }
+      }
+      if (tile.stasis > 0) {
+        tile.stasis = Math.max(0, tile.stasis - rounds);
+        if (tile.stasis <= 0) delete tile.stasis;
+      }
+    }));
   }
 
   tickSurvival(minutes) {
