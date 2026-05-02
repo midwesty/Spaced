@@ -29,11 +29,8 @@
     "text": "Choose your first jump: Ember Hollow or Glassreef.",
     "autoAdvanceIf": [
      {
-      "type": "currentSectorNodeIn",
-      "ids": [
-       "ember_hollow",
-       "glassreef"
-      ]
+      "type": "flag",
+      "key": "takeOff"
      }
     ],
     "onAdvanceLog": "You leave Port Sable behind and commit to a trail."
@@ -62,10 +59,18 @@
       "type": "flag",
       "key": "has_debt_ledger"
      }
-    ]
+    ],
+    "onAdvanceLog": "You've found the ledger. Now you have to decide what to do with it."
    },
    {
-    "text": "Choose who gets the ledger."
+    "text": "Choose who gets the ledger.",
+    "autoAdvanceIf": [
+     {
+      "type": "flag",
+      "key": "debt_ledger_turned_in"
+     }
+    ],
+    "onAdvanceLog": "You did what you had to do to get the Wake flying again. You handed over the ledger."
    }
   ],
   "completeIf": [
@@ -108,7 +113,8 @@
   "description": "Talon has unfinished business with the raider crews haunting Ember Hollow.",
   "stages": [
    {
-    "text": "Recruit Talon and learn what happened to his convoy."
+    "text": "Recruit Talon and learn what happened to his convoy.",
+    "onAdvanceLog": "Decide how to help Talon with his Boss Krail problem."
    },
    {
     "text": "Put down Boss Krail and decide who gets the salvage."

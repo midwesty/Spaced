@@ -2071,7 +2071,8 @@
       "y": 8,
       "text": "The heavy bay door grinds open. The Wake smells like sealed metal and old ambition."
      },
-     "zone": "restricted_impound"
+     "zone": "restricted_impound",
+     "questFlag": "acquiredWake"
     },
     {
      "type": "metal",
@@ -8656,7 +8657,8 @@
      "cover": false,
      "loot": false,
      "interact": true,
-     "zone": "hostile_reaver"
+     "zone": "hostile_reaver",
+     "interactText": "Shady Sam's trench coat"
     },
     {
      "type": "metal",
@@ -23052,7 +23054,8 @@
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "encounter": "travel_stowaway"
     },
     {
      "type": "metal",
@@ -23159,8 +23162,7 @@
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false,
-     "encounter": "travel_stowaway"
+     "interact": false
     },
     {
      "type": "metal",
@@ -23969,7 +23971,72 @@
     }
    ]
   ],
-  "actors": []
+  "actors": [
+   {
+    "id": "boobo_5028",
+    "name": "Boobo",
+    "speciesId": "mutoid",
+    "classId": "voidseer",
+    "role": "ally",
+    "factionId": "free",
+    "level": 1,
+    "x": 2,
+    "y": 2,
+    "hpMax": 12,
+    "armor": 11,
+    "movement": 6,
+    "abilities": [
+     "drain_essence"
+    ],
+    "inventory": [],
+    "equipped": {
+     "mainhand": null,
+     "offhand": null,
+     "armor": null,
+     "utility": null,
+     "implant": null,
+     "pack": null
+    },
+    "bio": "A mutant who's people fell victim to radioactive fallout somewhere in the verse. Loyal, but skiddish.",
+    "dialogueId": "node_1777145691576",
+    "appearance": {
+     "skin": "#b88e74",
+     "hair": "#2f3d5a",
+     "eyes": "#93d7ff",
+     "accent": "#d2a84b"
+    },
+    "affinity": 2,
+    "stats": {
+     "might": 12,
+     "agility": 8,
+     "grit": 11,
+     "wit": 8,
+     "presence": 11
+    },
+    "ambientDialogue": [
+     "Boobo may could be daydreaming or having a stroke. It's hard to tell with Boobo. Also, things stick to him, which has it's benefits."
+    ],
+    "visionRange": 5,
+    "facing": {
+     "dx": 0,
+     "dy": -1
+    },
+    "isVendor": true,
+    "vendorInventory": [
+     {
+      "itemId": "boobo_dart",
+      "qty": 10
+     },
+     {
+      "itemId": "credits_chit",
+      "qty": 50
+     }
+    ],
+    "vendorMarkdown": 0.5,
+    "vendorMarkup": 0.5,
+    "vendorGold": 1500
+   }
+  ]
  },
  {
   "id": "glassreef_archive",
@@ -26042,14 +26109,14 @@
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "toxic",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "toxic",
      "blocked": false,
      "cover": false,
      "loot": false,
@@ -26542,7 +26609,35 @@
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "sand",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "sand",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "sand",
+     "blocked": false,
+     "cover": false,
+     "loot": false,
+     "interact": false
+    },
+    {
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,
@@ -26577,42 +26672,14 @@
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "toxic",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
-     "blocked": false,
-     "cover": false,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": false,
-     "cover": false,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": false,
-     "cover": false,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
-     "blocked": false,
-     "cover": false,
-     "loot": false,
-     "interact": false
-    },
-    {
-     "type": "floor",
+     "type": "toxic",
      "blocked": false,
      "cover": false,
      "loot": false,
@@ -27116,35 +27183,35 @@
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,
      "interact": false
     },
     {
-     "type": "floor",
+     "type": "sand",
      "blocked": false,
      "cover": false,
      "loot": false,

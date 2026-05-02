@@ -477,6 +477,10 @@
     {
      "label": "Working on it.",
      "target": null
+    },
+    {
+     "label": "I found your ledger.",
+     "target": "naia_ledger_turnin"
     }
    ]
   },
@@ -2635,7 +2639,10 @@
      "label": "I appreciate this, Sera.",
      "target": null,
      "closeDialogue": true,
-     "log": "sera_key_given"
+     "log": "sera_key_given",
+     "effects": {
+      "setFlag": "talon_released"
+     }
     }
    ]
   },
