@@ -220,6 +220,8 @@ export function openPoolTable(tableId, state, data, api) {
     spNextEvent: 0, spEventLog: '',
     spNeonFlash: 0, spChaosMsg: '',
     spFlipped: false,
+    spLastEventTime: 0,
+    spExplosions: [],
   };
 
   injectStyles();
@@ -1322,6 +1324,8 @@ function initSpacePool() {
   _pts.spNeonFlash = 0;
   _pts.spChaosMsg = '';
   _pts.spFlipped = false;
+  _pts.spLastEventTime = 0;
+  _pts.spExplosions = [];
   mountGameCanvas();
 }
 
@@ -1341,29 +1345,35 @@ function resolveSpacePool() {
   }
 
   if (!pts.foulThisTurn && pocketed.length > 0 && pts.currentTurn === 'player') {
-    pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
-    pts.spBallTimerStart = Date.now();
+    const newLowest = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+    if (newLowest !== pts.lowestBall) {
+      // Only reset timer when a NEW ball becomes the target
+      pts.spBallTimerStart = Date.now();
+    }
+    pts.lowestBall = newLowest;
     ptAddLog(`Pocketed! Next: Ball ${pts.lowestBall}`);
     updateGameUI(); return;
   }
 
   pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
   if (pts.foulThisTurn) ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : `${pts.opponent.name} fouls`} — ball in hand!`);
-  pts.spBallTimerStart = Date.now();
+  // DO NOT reset timer on turn switch — timer is per ball, not per turn
   switchTurn();
 }
 
 function tickSpacePool() {
-  if (_pts.shotInProgress || _pts.currentTurn !== 'player') return;
+  if (_pts.shotInProgress) return;
   const pts = _pts;
   const now = Date.now();
   const elapsed = now - pts.spBallTimerStart;
   if (elapsed >= pts.spBallTimeLimit) {
     spExplodeLowestBall();
+    // Timer resets to now — next ball gets a fresh 60s
     pts.spBallTimerStart = now;
   }
   if (now >= pts.spNextEvent) {
     spTriggerChaosEvent();
+    pts.spLastEventTime = now;
     pts.spNextEvent = now + 20000 + Math.random() * 20000;
   }
 }
@@ -1374,17 +1384,40 @@ function spExplodeLowestBall() {
   if (!target) return;
   ptAddLog(`💣 Ball ${target.num} EXPLODED! Time's up!`);
   pts.spNeonFlash = Date.now();
-  const CHAIN_RADIUS = 70, CHAIN_FORCE = 6;
+
+  // Explosion particle burst
+  if (!pts.spExplosions) pts.spExplosions = [];
+  pts.spExplosions.push({
+    x: target.x, y: target.y,
+    time: Date.now(),
+    color: target.color || '#ff0033',
+    particles: Array.from({ length: 16 }, (_, i) => ({
+      angle: (i / 16) * Math.PI * 2 + Math.random() * 0.3,
+      speed: 3 + Math.random() * 7,
+      size: 3 + Math.random() * 4,
+    })),
+  });
+
+  // Dual-zone blast:
+  // Inner zone (CHAIN_R): strong push + chain explosion trigger
+  // Outer zone (PUSH_R): softer push only
+  const CHAIN_R = 70, PUSH_R = 130;
+  const CHAIN_FORCE = 8, PUSH_FORCE = 3.5;
   for (const ball of pts.balls) {
-    if (ball.pocketed) continue;
+    if (ball.pocketed || ball === target) continue;
     const dx = ball.x - target.x, dy = ball.y - target.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < CHAIN_RADIUS && dist > 0) {
-      const falloff = 1 - dist / CHAIN_RADIUS;
+    if (dist < CHAIN_R && dist > 0) {
+      const falloff = 1 - dist / CHAIN_R;
       ball.vx += (dx / dist) * CHAIN_FORCE * falloff;
       ball.vy += (dy / dist) * CHAIN_FORCE * falloff;
+    } else if (dist < PUSH_R && dist > 0) {
+      const falloff = 1 - (dist - CHAIN_R) / (PUSH_R - CHAIN_R);
+      ball.vx += (dx / dist) * PUSH_FORCE * falloff;
+      ball.vy += (dy / dist) * PUSH_FORCE * falloff;
     }
   }
+
   target.pocketed = true;
   const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num);
   if (!remaining.length) { endGame(false, `All balls exploded — the table wins.`); return; }
@@ -1401,39 +1434,55 @@ function spTriggerChaosEvent() {
     const active = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0 && b.num !== 9);
     if (active.length) {
       const src = active[Math.floor(Math.random() * active.length)];
-      const clone = createBall(src.num, src.x + 30 + Math.random() * 40, src.y + (Math.random() - 0.5) * 40);
+      // Place clone on opposite side of table from source with some randomness
+      const cx = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * (0.2 + Math.random() * 0.6);
+      const cy = PT_PLAY_Y1 + (PT_PLAY_Y2 - PT_PLAY_Y1) * (0.2 + Math.random() * 0.6);
+      const clone = createBall(src.num, cx, cy);
       clone.color = SP_NEON_COLORS[Math.floor(Math.random() * SP_NEON_COLORS.length)];
+      clone.vx = (Math.random() - 0.5) * 3;
+      clone.vy = (Math.random() - 0.5) * 3;
       pts.balls.push(clone);
       pts.spChaosMsg = `⚡ CHAOS: Ball ${src.num} DUPLICATED!`;
     }
   } else if (event === 'flip') {
     const midX = (PT_PLAY_X1 + PT_PLAY_X2) / 2;
     for (const b of pts.balls) {
-      if (!b.pocketed) { b.x = midX + (midX - b.x); b.vx = -b.vx; }
+      if (!b.pocketed) {
+        b.x = midX + (midX - b.x);
+        b.vx = -b.vx + (Math.random() - 0.5) * 2; // slight chaos on flip
+        b.vy += (Math.random() - 0.5) * 2;
+      }
     }
     pts.spChaosMsg = `🔄 CHAOS: TABLE FLIPPED!`;
   } else if (event === 'swap') {
     const active = pts.balls.filter(b => !b.pocketed && !b.isCue);
     if (active.length >= 2) {
-      const i = Math.floor(Math.random() * active.length);
-      let j; do { j = Math.floor(Math.random() * active.length); } while (j === i);
-      [active[i].x, active[j].x] = [active[j].x, active[i].x];
-      [active[i].y, active[j].y] = [active[j].y, active[i].y];
-      pts.spChaosMsg = `🔀 CHAOS: BALLS SWAPPED!`;
+      // Swap ALL pairs (full shuffle of positions)
+      const positions = active.map(b => ({ x: b.x, y: b.y }));
+      const shuffled = shuffleArr(positions);
+      active.forEach((b, i) => { b.x = shuffled[i].x; b.y = shuffled[i].y; b.vx = 0; b.vy = 0; });
+      pts.spChaosMsg = `🔀 CHAOS: ALL BALLS SWAPPED!`;
     }
   } else if (event === 'gravity') {
-    const cx = PT_PLAY_X1 + Math.random() * (PT_PLAY_X2 - PT_PLAY_X1);
-    const cy = PT_PLAY_Y1 + Math.random() * (PT_PLAY_Y2 - PT_PLAY_Y1);
+    const cx = PT_PLAY_X1 + 80 + Math.random() * (PT_PLAY_X2 - PT_PLAY_X1 - 160);
+    const cy = PT_PLAY_Y1 + 40 + Math.random() * (PT_PLAY_Y2 - PT_PLAY_Y1 - 80);
+    pts.spGravityWell = { x: cx, y: cy, time: Date.now(), duration: 3000 };
+    // Apply strong initial impulse
     for (const b of pts.balls) {
       if (b.pocketed) continue;
       const dx = cx - b.x, dy = cy - b.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      b.vx += (dx / dist) * 4; b.vy += (dy / dist) * 4;
+      b.vx += (dx / dist) * 8;
+      b.vy += (dy / dist) * 8;
     }
     pts.spChaosMsg = `🌀 CHAOS: GRAVITY WELL!`;
   } else if (event === 'rainbow') {
     for (const b of pts.balls) {
       if (!b.pocketed && !b.isCue) b.color = SP_NEON_COLORS[Math.floor(Math.random() * SP_NEON_COLORS.length)];
+    }
+    // Also give balls a random kick
+    for (const b of pts.balls) {
+      if (!b.pocketed && !b.isCue) { b.vx += (Math.random() - 0.5) * 3; b.vy += (Math.random() - 0.5) * 3; }
     }
     pts.spChaosMsg = `🌈 CHAOS: RAINBOW SHIFT!`;
   }
@@ -1445,11 +1494,47 @@ function drawSpacePoolLayer(ctx) {
   const now = Date.now();
   const pts = _pts;
 
-  // Blacklight felt wash
+  // ── LED CUSHION FLASH (drawn on the cushion area, outside play field) ──────
+  // This replaces the static dark green cushion with a strobing neon LED strip
+  const ledPhase = now * 0.005;
+  const ledColors = SP_NEON_COLORS;
+  const ledSegW = PT_TABLE_W / ledColors.length;
+  // Top cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.7) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 120)) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(i * ledSegW, 0, ledSegW, PT_CUSHION);
+  }
+  // Bottom cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.7 + Math.PI) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 100) + 3) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(i * ledSegW, PT_TABLE_H - PT_CUSHION, ledSegW, PT_CUSHION);
+  }
+  // Left cushion
+  const ledSegH = PT_TABLE_H / ledColors.length;
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.9 + 1.2) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 140) + 6) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(0, i * ledSegH, PT_CUSHION, ledSegH);
+  }
+  // Right cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.9 + 2.5) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 110) + 2) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(PT_TABLE_W - PT_CUSHION, i * ledSegH, PT_CUSHION, ledSegH);
+  }
+  ctx.globalAlpha = 1;
+
+  // ── BLACKLIGHT FELT WASH ──────────────────────────────────────────────────
   ctx.fillStyle = 'rgba(40,0,80,0.55)';
   ctx.fillRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
 
-  // Scrolling neon grid
+  // ── SCROLLING NEON GRID ───────────────────────────────────────────────────
   const gridOff = (now * 0.04) % 40;
   ctx.globalAlpha = 0.09;
   ctx.strokeStyle = '#ff00ff';
@@ -1462,14 +1547,14 @@ function drawSpacePoolLayer(ctx) {
   }
   ctx.globalAlpha = 1;
 
-  // Neon rail
+  // ── NEON RAIL GLOW ────────────────────────────────────────────────────────
   const railP = 0.5 + 0.5 * Math.sin(now * 0.003);
   ctx.strokeStyle = `rgba(180,0,255,${0.4 + railP * 0.5})`;
   ctx.lineWidth = 3;
   ctx.shadowBlur = 18; ctx.shadowColor = '#cc00ff';
   ctx.strokeRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
 
-  // Pocket neon rings
+  // ── POCKET NEON RINGS ─────────────────────────────────────────────────────
   POCKET_POSITIONS.forEach((p, i) => {
     const ph = (now * 0.002 + i * 0.8) % (Math.PI * 2);
     ctx.strokeStyle = SP_NEON_COLORS[i % SP_NEON_COLORS.length];
@@ -1481,65 +1566,123 @@ function drawSpacePoolLayer(ctx) {
   });
   ctx.shadowBlur = 0;
 
-  // Ball neon glow (draw before ball, after felt)
-  for (const ball of pts.balls) {
-    if (ball.pocketed) continue;
-    const gc = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, PT_BALL_R + 8);
-    const bc = ball.isCue ? '#ffffff' : (ball.color || SP_NEON_COLORS[ball.num % SP_NEON_COLORS.length]);
-    gc.addColorStop(0, bc + '66');
-    gc.addColorStop(1, 'transparent');
-    ctx.fillStyle = gc;
-    ctx.beginPath(); ctx.arc(ball.x, ball.y, PT_BALL_R + 8, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Countdown ring on target ball
-  if (pts.currentTurn === 'player' && !pts.shotInProgress) {
-    const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === pts.lowestBall);
-    if (target) {
-      const elapsed = now - pts.spBallTimerStart;
-      const frac = Math.max(0, 1 - elapsed / pts.spBallTimeLimit);
-      const urgency = frac < 0.3;
-      const tc = frac > 0.6 ? '#00ff44' : frac > 0.3 ? '#ffff00' : '#ff0033';
-      const pulse = urgency ? 0.5 + 0.5 * Math.sin(now * 0.015) : 1;
-      ctx.globalAlpha = pulse;
-      ctx.strokeStyle = tc;
-      ctx.lineWidth = 3;
-      ctx.shadowBlur = urgency ? 16 : 8; ctx.shadowColor = tc;
-      ctx.beginPath();
-      ctx.arc(target.x, target.y, PT_BALL_R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
-      ctx.stroke();
-      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-      const secsLeft = Math.ceil((pts.spBallTimeLimit - elapsed) / 1000);
-      if (secsLeft <= 15) {
-        ctx.fillStyle = tc;
-        ctx.font = `bold 9px "Space Mono", monospace`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.shadowBlur = 8; ctx.shadowColor = tc;
-        ctx.fillText(secsLeft + 's', target.x, target.y - PT_BALL_R - 12);
-        ctx.shadowBlur = 0;
+  // ── GRAVITY WELL VISUAL ───────────────────────────────────────────────────
+  if (pts.spGravityWell) {
+    const gw = pts.spGravityWell;
+    const age = now - gw.time;
+    if (age < gw.duration) {
+      const fade = 1 - age / gw.duration;
+      const spin = age * 0.005;
+      // Rotating spiral rings
+      for (let ring = 0; ring < 3; ring++) {
+        ctx.globalAlpha = fade * (0.3 + ring * 0.15);
+        ctx.strokeStyle = SP_NEON_COLORS[(ring + 2) % SP_NEON_COLORS.length];
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+        ctx.beginPath();
+        ctx.arc(gw.x, gw.y, 20 + ring * 18 + Math.sin(spin + ring) * 5, spin, spin + Math.PI * 1.5);
+        ctx.stroke();
       }
+      // Center vortex
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = '#ff00ff';
+      ctx.shadowBlur = 16; ctx.shadowColor = '#ff00ff';
+      ctx.beginPath(); ctx.arc(gw.x, gw.y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    } else {
+      pts.spGravityWell = null;
     }
   }
 
-  // Neon flash
+  // ── BALL NEON GLOW HALOS ─────────────────────────────────────────────────
+  for (const ball of pts.balls) {
+    if (ball.pocketed) continue;
+    const gc = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, PT_BALL_R + 10);
+    const bc = ball.isCue ? '#ffffff' : (ball.color || SP_NEON_COLORS[ball.num % SP_NEON_COLORS.length]);
+    gc.addColorStop(0, bc + '77');
+    gc.addColorStop(1, 'transparent');
+    ctx.fillStyle = gc;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, PT_BALL_R + 10, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── COUNTDOWN RING ON TARGET BALL ─────────────────────────────────────────
+  const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === pts.lowestBall);
+  if (target) {
+    const elapsed = now - pts.spBallTimerStart;
+    const frac = Math.max(0, 1 - elapsed / pts.spBallTimeLimit);
+    const urgency = frac < 0.3;
+    const tc = frac > 0.6 ? '#00ff44' : frac > 0.3 ? '#ffff00' : '#ff0033';
+    const pulse = urgency ? 0.5 + 0.5 * Math.sin(now * 0.015) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = tc;
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = urgency ? 18 : 8; ctx.shadowColor = tc;
+    ctx.beginPath();
+    ctx.arc(target.x, target.y, PT_BALL_R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+    ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    const secsLeft = Math.ceil((pts.spBallTimeLimit - elapsed) / 1000);
+    if (secsLeft <= 15) {
+      ctx.fillStyle = tc;
+      ctx.font = `bold 9px "Space Mono", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 8; ctx.shadowColor = tc;
+      ctx.fillText(secsLeft + 's', target.x, target.y - PT_BALL_R - 13);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── EXPLOSION PARTICLES ───────────────────────────────────────────────────
+  if (pts.spExplosions) {
+    pts.spExplosions = pts.spExplosions.filter(ex => now - ex.time < 900);
+    for (const ex of pts.spExplosions) {
+      const progress = (now - ex.time) / 900;
+      for (const p of ex.particles) {
+        const px = ex.x + Math.cos(p.angle) * p.speed * progress * 60;
+        const py = ex.y + Math.sin(p.angle) * p.speed * progress * 60;
+        ctx.globalAlpha = (1 - progress) * 0.9;
+        ctx.fillStyle = ex.color;
+        ctx.shadowBlur = 8; ctx.shadowColor = ex.color;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * (1 - progress * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Shockwave ring
+      ctx.globalAlpha = (1 - progress) * 0.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 12; ctx.shadowColor = '#ff00ff';
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, progress * 80, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    }
+  }
+
+  // ── NEON FLASH ────────────────────────────────────────────────────────────
   if (pts.spNeonFlash && now - pts.spNeonFlash < 400) {
     const fp = (now - pts.spNeonFlash) / 400;
-    ctx.fillStyle = `rgba(255,0,255,${(1 - fp) * 0.4})`;
+    ctx.fillStyle = `rgba(255,0,255,${(1 - fp) * 0.45})`;
     ctx.fillRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
   }
 
-  // Chaos banner
-  if (pts.spChaosMsg) {
-    const age = now - (pts.spNextEvent - 20000);
-    if (age > 0 && age < 3500) {
-      const fade = Math.min(1, (3500 - age) / 800);
+  // ── CHAOS BANNER (uses spLastEventTime for reliable timing) ──────────────
+  if (pts.spChaosMsg && pts.spLastEventTime) {
+    const age = now - pts.spLastEventTime;
+    if (age < 3500) {
+      const fade = age < 300 ? age / 300 : Math.min(1, (3500 - age) / 600);
       ctx.globalAlpha = fade;
-      ctx.fillStyle = 'rgba(80,0,120,0.7)';
-      ctx.fillRect(PT_PLAY_X1, PT_MID_Y - 17, PT_PLAY_X2 - PT_PLAY_X1, 34);
-      ctx.fillStyle = '#ff00ff';
+      ctx.fillStyle = 'rgba(80,0,120,0.75)';
+      ctx.fillRect(PT_PLAY_X1, PT_MID_Y - 18, PT_PLAY_X2 - PT_PLAY_X1, 36);
+      // Animated border
+      ctx.strokeStyle = SP_NEON_COLORS[Math.floor(now / 80) % SP_NEON_COLORS.length];
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+      ctx.strokeRect(PT_PLAY_X1, PT_MID_Y - 18, PT_PLAY_X2 - PT_PLAY_X1, 36);
+      ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 13px "Space Mono", monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.shadowBlur = 14; ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 16; ctx.shadowColor = '#ff00ff';
       ctx.fillText(pts.spChaosMsg, (PT_PLAY_X1 + PT_PLAY_X2) / 2, PT_MID_Y);
       ctx.shadowBlur = 0; ctx.globalAlpha = 1;
     }
