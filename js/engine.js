@@ -3,6 +3,7 @@ import { applyDerivedStats, createActorFromTemplate, freshState, loadState, save
 import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD, renderSkillCheckIfPending, renderVendor } from './ui.js';
 import { openCardTable, resetGamblerCredits } from './CardTable.js';
 import { openSlotMachine } from './SlotMachine.js';
+import { openPoolTable } from './PoolTable.js';
 
 export class GameEngine {
   constructor(data) {
@@ -88,6 +89,7 @@ export class GameEngine {
       openCargo: () => this.openPanel('inventoryPanel'),
       openCardTable: (tableId) => openCardTable(tableId, this.state, this.data, this.api),
       openSlotMachine: (tableId) => openSlotMachine(tableId, this.state, this.data, this.api),
+      openPoolTable:   (tableId) => openPoolTable(tableId, this.state, this.data, this.api),
       // Vendor
       openVendor: (vendorId) => this.openVendor(vendorId),
       buyFromVendor: (vendorId, itemId, qty) => this.buyFromVendor(vendorId, itemId, qty),
@@ -780,10 +782,12 @@ populateCreator() {
         const tableDef = (this.data.tables || []).find(t => t.id === tableId);
         const tableName = tableDef?.name || 'Table';
         const isSlot = tableDef?.type === 'slot';
-        const icon = isSlot ? '🎰' : '◈';
-        const label = isSlot ? `${icon} Play ${tableName}` : `${icon} Join ${tableName}`;
+        const isOther = tableDef?.type === 'other';
+        const icon = isSlot ? '🎰' : isOther ? '🎱' : '◈';
+        const label = isSlot ? `${icon} Play ${tableName}` : isOther ? `${icon} Play ${tableName}` : `${icon} Join ${tableName}`;
         options.push([label, () => {
           if (isSlot) openSlotMachine(tableId, this.state, this.data, this.api);
+          else if (isOther) openPoolTable(tableId, this.state, this.data, this.api);
           else openCardTable(tableId, this.state, this.data, this.api);
         }]);
         options.push([`View Table Info`, () => {
@@ -798,7 +802,7 @@ populateCreator() {
       }
       if (tile.gameTable && !inRange) {
         const tableDef2 = (this.data.tables || []).find(t => t.id === tile.gameTable);
-        const icon2 = tableDef2?.type === 'slot' ? '🎰' : '◈';
+        const icon2 = tableDef2?.type === 'slot' ? '🎰' : tableDef2?.type === 'other' ? '🎱' : '◈';
         options.push([`${icon2} ${tableDef2?.name || 'Table'} (move closer)`, () => this.log('Move within 5 tiles to use this.')]);
       }
       if (!tile.blocked) options.push(['Move Here', () => this.moveActorToward(actor, x, y)]);

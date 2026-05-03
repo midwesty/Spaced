@@ -11,14 +11,30 @@
   "minBet": 10,
   "maxBet": 250,
   "seats": [
-   {"gamblerId": "voss_shark","startingCredits": 400},
-   {"gamblerId": "mira_nervous","startingCredits": 180},
-   {"gamblerId": "drek_reckless","startingCredits": 220}
+   {
+    "gamblerId": "voss_shark",
+    "startingCredits": 400
+   },
+   {
+    "gamblerId": "mira_nervous",
+    "startingCredits": 180
+   },
+   {
+    "gamblerId": "drek_reckless",
+    "startingCredits": 220
+   }
   ],
-  "availableGames": ["blackjack","void_draw","holdem"],
+  "availableGames": [
+   "blackjack",
+   "void_draw",
+   "holdem"
+  ],
   "requiredFlag": null,
   "requiredFaction": null,
-  "gossipPool": ["dock_gossip_1","wake_hint_1"],
+  "gossipPool": [
+   "dock_gossip_1",
+   "wake_hint_1"
+  ],
   "onPlayerWinFlag": "beat_sump_table",
   "narrativeNPC": "voss_shark"
  },
@@ -34,14 +50,32 @@
   "minBet": 50,
   "maxBet": 1000,
   "seats": [
-   {"gamblerId": "commander_vask_off","startingCredits": 800,"startCredits": 800},
-   {"gamblerId": "kael_drin_gambler","startingCredits": 600,"startCredits": 500},
-   {"gamblerId": "pastor_jim","startCredits": 1000}
+   {
+    "gamblerId": "commander_vask_off",
+    "startingCredits": 800,
+    "startCredits": 800
+   },
+   {
+    "gamblerId": "kael_drin_gambler",
+    "startingCredits": 600,
+    "startCredits": 500
+   },
+   {
+    "gamblerId": "pastor_jim",
+    "startCredits": 1000
+   }
   ],
-  "availableGames": ["void_draw","holdem","blackjack"],
+  "availableGames": [
+   "void_draw",
+   "holdem",
+   "blackjack"
+  ],
   "requiredFlag": "talked_commander_vask",
   "requiredFaction": null,
-  "gossipPool": ["impound_hint_1","vask_secret_1"],
+  "gossipPool": [
+   "impound_hint_1",
+   "vask_secret_1"
+  ],
   "onPlayerWinFlag": "beat_vask_at_cards",
   "narrativeNPC": "commander_vask_off"
  },
@@ -57,14 +91,29 @@
   "minBet": 20,
   "maxBet": 400,
   "seats": [
-   {"gamblerId": "ash_boss_rel","startingCredits": 500},
-   {"gamblerId": "frontier_del","startingCredits": 200},
-   {"gamblerId": "frontier_yara","startingCredits": 190}
+   {
+    "gamblerId": "ash_boss_rel",
+    "startingCredits": 500
+   },
+   {
+    "gamblerId": "frontier_del",
+    "startingCredits": 200
+   },
+   {
+    "gamblerId": "frontier_yara",
+    "startingCredits": 190
+   }
   ],
-  "availableGames": ["blackjack","void_draw","holdem"],
+  "availableGames": [
+   "blackjack",
+   "void_draw",
+   "holdem"
+  ],
   "requiredFlag": null,
   "requiredFaction": null,
-  "gossipPool": ["ember_convoy_hint"],
+  "gossipPool": [
+   "ember_convoy_hint"
+  ],
   "onPlayerWinFlag": "impressed_ash_crew",
   "narrativeNPC": "ash_boss_rel"
  },
@@ -77,20 +126,35 @@
   "tileY": 2,
   "minBet": 10,
   "maxBet": 300,
-  "availableGames": ["blackjack","void_draw","holdem"],
-  "seats": [
-   {"gamblerId": "vexa","startCredits": 200},
-   {"gamblerId": "cargo_drone","startCredits": 650},
-   {"gamblerId": "boobo","startCredits": 350}
+  "availableGames": [
+   "blackjack",
+   "void_draw",
+   "holdem"
   ],
-  "gossipPool": ["Is there really a ghost in the engine? I hear voices and am compelled to do things occasionally."]
+  "seats": [
+   {
+    "gamblerId": "vexa",
+    "startCredits": 200
+   },
+   {
+    "gamblerId": "cargo_drone",
+    "startCredits": 650
+   },
+   {
+    "gamblerId": "boobo",
+    "startCredits": 350
+   }
+  ],
+  "gossipPool": [
+   "Is there really a ghost in the engine? I hear voices and am compelled to do things occasionally."
+  ]
  },
  {
   "id": "classic_space_slots",
   "name": "Classic Space Slots",
   "type": "slot",
   "machineType": "classic_space_slots",
-  "location": "Port Sable · Sump Bar, back corner",
+  "location": "Port Sable \u00b7 Sump Bar, back corner",
   "mapId": "port_sable",
   "tileX": 10,
   "tileY": 26,
@@ -108,7 +172,7 @@
   "name": "BRAIN 'SPLOSION",
   "type": "slot",
   "machineType": "brain_splosion",
-  "location": "Port Sable · Sump Bar, screaming corner",
+  "location": "Port Sable \u00b7 Sump Bar, screaming corner",
   "mapId": "port_sable",
   "tileX": 12,
   "tileY": 26,
@@ -120,5 +184,43 @@
   "seats": [],
   "availableGames": [],
   "gossipPool": []
+ },
+ {
+  "id": "void_billiards",
+  "name": "The Void Billiards Table",
+  "type": "other",
+  "location": "Port Sable \u00b7 Back corner, near the vents",
+  "mapId": "port_sable",
+  "tileX": 2,
+  "tileY": 21,
+  "atmosphere": "dim",
+  "minBet": 20,
+  "maxBet": 500,
+  "availableGames": [
+   "eight_ball",
+   "nine_ball",
+   "straight_pool",
+   "blitzards"
+  ],
+  "seats": [
+   {
+    "gamblerId": "chalk_drifter",
+    "startingCredits": 350
+   },
+   {
+    "gamblerId": "one_eye_lev",
+    "startingCredits": 600
+   },
+   {
+    "gamblerId": "juno_breaks",
+    "startingCredits": 220
+   }
+  ],
+  "gossipPool": [
+   "pool_dock_rumor",
+   "pool_wake_tip"
+  ],
+  "onPlayerWinFlag": "won_at_void_billiards",
+  "requiredFlag": null
  }
 ]
