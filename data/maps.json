@@ -5907,11 +5907,12 @@
      "interact": false
     },
     {
-     "type": "metal",
+     "type": "floor",
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "gameTable": "classic_space_slots"
     },
     {
      "type": "metal",
@@ -5928,11 +5929,12 @@
      "interact": false
     },
     {
-     "type": "metal",
+     "type": "floor",
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "gameTable": "brain_splosion"
     },
     {
      "type": "metal",
