@@ -17,15 +17,15 @@ const MACHINE_REGISTRY = {
     id: 'classic_space_slots',
     name: 'Classic Space Slots',
     subtitle: 'THE VOID NEVER PAYS — BUT IT WILL',
-    initFn: initClassic,
-    renderFn: renderClassic,
+    initFn: (...args) => initClassic(...args),
+    renderFn: (...args) => renderClassic(...args),
   },
   brain_splosion: {
     id: 'brain_splosion',
     name: "BRAIN 'SPLOSION",
     subtitle: '25 LINES OF PURE UNCUT CHAOS',
-    initFn: initBrainSplosion,
-    renderFn: renderBrainSplosion,
+    initFn: (...args) => initBrainSplosion(...args),
+    renderFn: (...args) => renderBrainSplosion(...args),
   },
 };
 
