@@ -2,6 +2,7 @@
  {
   "id": "sump_corner",
   "name": "The Corner Table",
+  "type": "card",
   "location": "Above Torsh's Bar, Port Sable",
   "mapId": "port_sable",
   "tileX": 6,
@@ -10,36 +11,21 @@
   "minBet": 10,
   "maxBet": 250,
   "seats": [
-   {
-    "gamblerId": "voss_shark",
-    "startingCredits": 400
-   },
-   {
-    "gamblerId": "mira_nervous",
-    "startingCredits": 180
-   },
-   {
-    "gamblerId": "drek_reckless",
-    "startingCredits": 220
-   }
+   {"gamblerId": "voss_shark","startingCredits": 400},
+   {"gamblerId": "mira_nervous","startingCredits": 180},
+   {"gamblerId": "drek_reckless","startingCredits": 220}
   ],
-  "availableGames": [
-   "blackjack",
-   "void_draw",
-   "holdem"
-  ],
+  "availableGames": ["blackjack","void_draw","holdem"],
   "requiredFlag": null,
   "requiredFaction": null,
-  "gossipPool": [
-   "dock_gossip_1",
-   "wake_hint_1"
-  ],
+  "gossipPool": ["dock_gossip_1","wake_hint_1"],
   "onPlayerWinFlag": "beat_sump_table",
   "narrativeNPC": "voss_shark"
  },
  {
   "id": "civic_backroom",
   "name": "The Backroom",
+  "type": "card",
   "location": "Civic Quarter, Port Sable",
   "mapId": "port_sable",
   "tileX": 28,
@@ -48,38 +34,21 @@
   "minBet": 50,
   "maxBet": 1000,
   "seats": [
-   {
-    "gamblerId": "commander_vask_off",
-    "startingCredits": 800,
-    "startCredits": 800
-   },
-   {
-    "gamblerId": "kael_drin_gambler",
-    "startingCredits": 600,
-    "startCredits": 500
-   },
-   {
-    "gamblerId": "pastor_jim",
-    "startCredits": 1000
-   }
+   {"gamblerId": "commander_vask_off","startingCredits": 800,"startCredits": 800},
+   {"gamblerId": "kael_drin_gambler","startingCredits": 600,"startCredits": 500},
+   {"gamblerId": "pastor_jim","startCredits": 1000}
   ],
-  "availableGames": [
-   "void_draw",
-   "holdem",
-   "blackjack"
-  ],
+  "availableGames": ["void_draw","holdem","blackjack"],
   "requiredFlag": "talked_commander_vask",
   "requiredFaction": null,
-  "gossipPool": [
-   "impound_hint_1",
-   "vask_secret_1"
-  ],
+  "gossipPool": ["impound_hint_1","vask_secret_1"],
   "onPlayerWinFlag": "beat_vask_at_cards",
   "narrativeNPC": "commander_vask_off"
  },
  {
   "id": "ember_dust_table",
   "name": "Dust & Ash Table",
+  "type": "card",
   "location": "Ember Hollow Outpost",
   "mapId": "ember_hollow",
   "tileX": 10,
@@ -88,61 +57,68 @@
   "minBet": 20,
   "maxBet": 400,
   "seats": [
-   {
-    "gamblerId": "ash_boss_rel",
-    "startingCredits": 500
-   },
-   {
-    "gamblerId": "frontier_del",
-    "startingCredits": 200
-   },
-   {
-    "gamblerId": "frontier_yara",
-    "startingCredits": 190
-   }
+   {"gamblerId": "ash_boss_rel","startingCredits": 500},
+   {"gamblerId": "frontier_del","startingCredits": 200},
+   {"gamblerId": "frontier_yara","startingCredits": 190}
   ],
-  "availableGames": [
-   "blackjack",
-   "void_draw",
-   "holdem"
-  ],
+  "availableGames": ["blackjack","void_draw","holdem"],
   "requiredFlag": null,
   "requiredFaction": null,
-  "gossipPool": [
-   "ember_convoy_hint"
-  ],
+  "gossipPool": ["ember_convoy_hint"],
   "onPlayerWinFlag": "impressed_ash_crew",
   "narrativeNPC": "ash_boss_rel"
  },
  {
   "id": "scavenger_wake_table",
   "name": "Scavenger Wake Crew Table",
+  "type": "card",
   "mapId": "wake_interior",
   "tileX": 23,
   "tileY": 2,
   "minBet": 10,
   "maxBet": 300,
-  "availableGames": [
-   "blackjack",
-   "void_draw",
-   "holdem"
-  ],
+  "availableGames": ["blackjack","void_draw","holdem"],
   "seats": [
-   {
-    "gamblerId": "vexa",
-    "startCredits": 200
-   },
-   {
-    "gamblerId": "cargo_drone",
-    "startCredits": 650
-   },
-   {
-    "gamblerId": "boobo",
-    "startCredits": 350
-   }
+   {"gamblerId": "vexa","startCredits": 200},
+   {"gamblerId": "cargo_drone","startCredits": 650},
+   {"gamblerId": "boobo","startCredits": 350}
   ],
-  "gossipPool": [
-   "Is there really a ghost in the engine? I hear voices and am compelled to do things occasionally."
-  ]
+  "gossipPool": ["Is there really a ghost in the engine? I hear voices and am compelled to do things occasionally."]
+ },
+ {
+  "id": "classic_space_slots",
+  "name": "Classic Space Slots",
+  "type": "slot",
+  "machineType": "classic_space_slots",
+  "location": "Port Sable · Sump Bar, back corner",
+  "mapId": "port_sable",
+  "tileX": 10,
+  "tileY": 26,
+  "minBet": 10,
+  "maxBet": 500,
+  "atmosphere": "dim",
+  "requiredFlag": null,
+  "onPlayerWinFlag": "won_at_classic_slots",
+  "seats": [],
+  "availableGames": [],
+  "gossipPool": []
+ },
+ {
+  "id": "brain_splosion",
+  "name": "BRAIN 'SPLOSION",
+  "type": "slot",
+  "machineType": "brain_splosion",
+  "location": "Port Sable · Sump Bar, screaming corner",
+  "mapId": "port_sable",
+  "tileX": 12,
+  "tileY": 26,
+  "minBet": 1,
+  "maxBet": 200,
+  "atmosphere": "hostile",
+  "requiredFlag": null,
+  "onPlayerWinFlag": "won_at_brain_splosion",
+  "seats": [],
+  "availableGames": [],
+  "gossipPool": []
  }
 ]

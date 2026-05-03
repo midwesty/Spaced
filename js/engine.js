@@ -2,6 +2,7 @@ import { $, $$, chance, clamp, createEl, deepClone, distance, getById, pick, ran
 import { applyDerivedStats, createActorFromTemplate, freshState, loadState, saveState } from './state.js';
 import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, renderCrew, renderDialogue, renderInspect, renderInventory, renderJournal, renderMap, renderMessages, renderPartyStrip, renderResources, renderSaves, renderSectorMap, renderShip, renderTopHUD, renderSkillCheckIfPending, renderVendor } from './ui.js';
 import { openCardTable, resetGamblerCredits } from './CardTable.js';
+import { openSlotMachine } from './SlotMachine.js';
 
 export class GameEngine {
   constructor(data) {
@@ -86,6 +87,7 @@ export class GameEngine {
       convertScrapToFuel: () => this.convertScrapToFuel(),
       openCargo: () => this.openPanel('inventoryPanel'),
       openCardTable: (tableId) => openCardTable(tableId, this.state, this.data, this.api),
+      openSlotMachine: (tableId) => openSlotMachine(tableId, this.state, this.data, this.api),
       // Vendor
       openVendor: (vendorId) => this.openVendor(vendorId),
       buyFromVendor: (vendorId, itemId, qty) => this.buyFromVendor(vendorId, itemId, qty),
@@ -776,8 +778,14 @@ populateCreator() {
       if (tile.gameTable && inRange) {
         const tableId = tile.gameTable;
         const tableDef = (this.data.tables || []).find(t => t.id === tableId);
-        const tableName = tableDef?.name || 'Card Table';
-        options.push([`◈ Join ${tableName}`, () => openCardTable(tableId, this.state, this.data, this.api)]);
+        const tableName = tableDef?.name || 'Table';
+        const isSlot = tableDef?.type === 'slot';
+        const icon = isSlot ? '🎰' : '◈';
+        const label = isSlot ? `${icon} Play ${tableName}` : `${icon} Join ${tableName}`;
+        options.push([label, () => {
+          if (isSlot) openSlotMachine(tableId, this.state, this.data, this.api);
+          else openCardTable(tableId, this.state, this.data, this.api);
+        }]);
         options.push([`View Table Info`, () => {
           if (tableDef) {
             const seats = (tableDef.seats || []).map(s => {
@@ -788,7 +796,11 @@ populateCreator() {
           }
         }]);
       }
-      if (tile.gameTable && !inRange) options.push([`◈ Card Table (move closer)`, () => this.log('Move within 5 tiles to join the game.')]);
+      if (tile.gameTable && !inRange) {
+        const tableDef2 = (this.data.tables || []).find(t => t.id === tile.gameTable);
+        const icon2 = tableDef2?.type === 'slot' ? '🎰' : '◈';
+        options.push([`${icon2} ${tableDef2?.name || 'Table'} (move closer)`, () => this.log('Move within 5 tiles to use this.')]);
+      }
       if (!tile.blocked) options.push(['Move Here', () => this.moveActorToward(actor, x, y)]);
       if (tile.loot && !inRange) options.push([`Loot (move closer)`, () => this.log('Move closer to loot this.')]);
       if (tile.interact && !inRange) options.push([`Interact (move closer)`, () => this.log('Move closer to interact.')]);
@@ -908,17 +920,6 @@ populateCreator() {
 
     if (this.state.combat.active) {
       this.state.combat.movementLeft[actor.id] = Math.max(0, (this.state.combat.movementLeft[actor.id] ?? actor.moveRange) - 1);
-    }
-
-    // Update blinded status based on whether actor is now on a smoky tile
-    const movedTile = this.currentMap().tiles[y]?.[x];
-    if (movedTile?.smoke > 0) {
-      // Entered smoke — apply blinded
-      if (!actor.statuses.includes('blinded')) actor.statuses.push('blinded');
-    } else {
-      // Left smoke (or on clear tile) — remove blinded if it came from smoke
-      // Only remove if not on any other smoke source tile
-      actor.statuses = actor.statuses.filter(s => s !== 'blinded');
     }
 
     const size = this.data.config.map.tileSize;
@@ -1178,8 +1179,6 @@ attackAoE(attacker, cx, cy, ability) {
   const costCheck = this.canSpendCost(attacker, ability.costType || 'action', ability);
   if (!costCheck.ok) { this.log(costCheck.reason); return; }
 
-  // True AoE hits everyone in radius — no excludeId, including allies and party members
-  // Only exclude the attacker themselves (they chose to use the ability)
   const targets = this.getActorsInRadius(cx, cy, ability.aoeRadius, attacker.id);
   if (!targets.length) this.log(`${ability.name}: no targets in the blast zone.`);
 
@@ -1196,8 +1195,7 @@ attackAoE(attacker, cx, cy, ability) {
       if (target.shield > 0) { const abs = Math.min(target.shield, dmg); target.shield -= abs; dmg -= abs; }
       if (dmg > 0) target.hp -= dmg;
       this.flashActor(target.id, 'entity-hit', 500);
-      const friendlyNote = (this.state.party.includes(target.id) || target.role === 'ally') ? ' (friendly fire!)' : '';
-      this.log(`${target.name} takes ${Math.max(dmg, 0)} from ${ability.name}${crit ? ' (CRIT)' : ''}${friendlyNote}.`);
+      this.log(`${target.name} takes ${Math.max(dmg, 0)} from ${ability.name}${crit ? ' (CRIT)' : ''}.`);
       if (ability.applyStatus && !target.statuses.includes(ability.applyStatus)) target.statuses.push(ability.applyStatus);
       if (ability.pushDistance) this.applyPush(attacker, target, cx, cy, ability.pushDistance, ability.pushSaveDC, ability.pushSaveAttr);
       this.handleDeathState(target);
@@ -1328,7 +1326,6 @@ throwItem(actorId, itemIdx, targetX, targetY) {
   this.showBlastEffect(targetX, targetY, aoeR);
 
   if (aoeR > 0) {
-    // AoE throws hit everyone in radius — including party members (friendly fire)
     const targets = this.getActorsInRadius(targetX, targetY, aoeR, actor.id);
     targets.forEach(t => {
       if (item.throwDamage && item.throwDamage !== '0') {
@@ -1336,8 +1333,7 @@ throwItem(actorId, itemIdx, targetX, targetY) {
         if (t.shield > 0) { const abs = Math.min(t.shield, dmg); t.shield -= abs; dmg -= abs; }
         if (dmg > 0) t.hp -= dmg;
         this.flashActor(t.id, 'entity-hit', 500);
-        const friendlyNote = (this.state.party.includes(t.id) || t.role === 'ally') ? '⚠' : '';
-        hitSummary.push(`${friendlyNote}${t.name} (${Math.max(dmg,0)} dmg)`);
+        hitSummary.push(`${t.name} (${Math.max(dmg,0)} dmg)`);
       } else {
         this.flashActor(t.id, 'entity-hit', 400);
         hitSummary.push(t.name);
@@ -2417,29 +2413,36 @@ attack(attacker, target, ability = null) {
       this.handleDeathState(actor);
     });
 
-    // Decrement smoke and stasis tiles, then sweep all actors for blinded
+    // Decrement smoke and stasis tiles, apply/remove blinded
     const map = this.currentMap();
     if (map) {
       map.tiles.forEach((row, ty) => row.forEach((tile, tx) => {
         if (tile.smoke > 0) {
           tile.smoke--;
-          if (tile.smoke === 0) delete tile.smoke;
+          if (tile.smoke === 0) {
+            delete tile.smoke;
+            // Remove blinded from actors that are no longer in smoke
+            this.state.roster.forEach(a => {
+              if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+                // Only remove blinded if no adjacent smoke tile still affects them
+                const stillSmoked = map.tiles[ty]?.[tx]?.smoke > 0;
+                if (!stillSmoked) a.statuses = a.statuses.filter(s => s !== 'blinded');
+              }
+            });
+          } else {
+            // Apply blinded to any actors on smoky tiles this round
+            this.state.roster.forEach(a => {
+              if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+                if (!a.statuses.includes('blinded')) a.statuses.push('blinded');
+              }
+            });
+          }
         }
         if (tile.stasis > 0) {
           tile.stasis--;
           if (tile.stasis === 0) delete tile.stasis;
         }
       }));
-      // After all smoke decrements: apply/remove blinded based on each actor's current tile
-      this.state.roster.forEach(a => {
-        if (a.dead || a.mapId !== this.state.mapId) return;
-        const actorTile = map.tiles[a.y]?.[a.x];
-        if (actorTile?.smoke > 0) {
-          if (!a.statuses.includes('blinded')) a.statuses.push('blinded');
-        } else {
-          a.statuses = a.statuses.filter(s => s !== 'blinded');
-        }
-      });
     }
 
     const enemiesAlive = this.state.roster.some(a => a.mapId === this.state.mapId && a.role === 'enemy' && !a.dead);
@@ -2475,23 +2478,21 @@ attack(attacker, target, ability = null) {
     map.tiles.forEach((row, ty) => row.forEach((tile, tx) => {
       if (tile.smoke > 0) {
         tile.smoke = Math.max(0, tile.smoke - rounds);
-        if (tile.smoke <= 0) delete tile.smoke;
+        if (tile.smoke <= 0) {
+          delete tile.smoke;
+          // Remove blinded from actors on cleared smoke tiles
+          this.state.roster.forEach(a => {
+            if (a.mapId === this.state.mapId && !a.dead && a.x === tx && a.y === ty) {
+              a.statuses = a.statuses.filter(s => s !== 'blinded');
+            }
+          });
+        }
       }
       if (tile.stasis > 0) {
         tile.stasis = Math.max(0, tile.stasis - rounds);
         if (tile.stasis <= 0) delete tile.stasis;
       }
     }));
-    // After all smoke updates: sweep all actors and correct blinded status
-    this.state.roster.forEach(a => {
-      if (a.dead || a.mapId !== this.state.mapId) return;
-      const actorTile = map.tiles[a.y]?.[a.x];
-      if (actorTile?.smoke > 0) {
-        if (!a.statuses.includes('blinded')) a.statuses.push('blinded');
-      } else {
-        a.statuses = a.statuses.filter(s => s !== 'blinded');
-      }
-    });
   }
 
   tickSurvival(minutes) {
