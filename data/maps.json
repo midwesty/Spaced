@@ -6189,11 +6189,12 @@
      "interact": false
     },
     {
-     "type": "metal",
+     "type": "floor",
      "blocked": false,
      "cover": false,
      "loot": false,
-     "interact": false
+     "interact": false,
+     "gameTable": "void_billiards"
     },
     {
      "type": "metal",
