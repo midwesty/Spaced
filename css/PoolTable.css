@@ -752,3 +752,126 @@
   .pt-canvas-hint    { display: none; }
   .pt-game-cards     { grid-template-columns: 1fr; }
 }
+
+/* ─── SPACE POOL — NEON CHAOS SIDEBAR ───────────────────── */
+
+.sp-sidebar {
+  background: linear-gradient(180deg, rgba(80,0,120,0.3) 0%, rgba(0,0,40,0.5) 100%);
+  border: 1px solid #cc00ff44;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.sp-title {
+  color: #ff00ff !important;
+  text-shadow: 0 0 8px #ff00ff, 0 0 20px #cc00ff;
+  border-bottom-color: #cc00ff44 !important;
+  letter-spacing: 0.18em;
+  animation: sp-title-flicker 3s infinite;
+}
+
+@keyframes sp-title-flicker {
+  0%,100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.4; }
+  94% { opacity: 1; }
+  96% { opacity: 0.6; }
+  97% { opacity: 1; }
+}
+
+.sp-timer-wrap {
+  text-align: center;
+  padding: 10px 0 6px;
+  border-bottom: 1px solid #cc00ff22;
+  margin-bottom: 8px;
+}
+
+.sp-timer-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  color: #cc00ff;
+  margin-bottom: 4px;
+}
+
+.sp-timer {
+  font-family: 'Space Mono', monospace;
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.sp-timer-ok     { color: #00ff44; }
+.sp-timer-warn   { color: #ffff00; animation: sp-pulse 1s infinite; }
+.sp-timer-danger { color: #ff0033; animation: sp-pulse 0.4s infinite; }
+
+@keyframes sp-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+.sp-timer-sub {
+  font-size: 9px;
+  color: #cc00ffaa;
+  margin-top: 4px;
+}
+.sp-timer-sub strong { color: #ff00ff; }
+
+.sp-balls-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: #cc00ff88;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.sp-remaining {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.sp-ball-pip {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #1a0030;
+  border: 1px solid #cc00ff66;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: #cc00ffaa;
+  transition: all 0.2s;
+}
+
+.sp-ball-pip.sp-target {
+  background: #ff00ff22;
+  border-color: #ff00ff;
+  color: #ff00ff;
+  box-shadow: 0 0 8px #ff00ff, 0 0 16px #cc00ff44;
+  animation: sp-pulse 0.8s infinite;
+  font-size: 9px;
+}
+
+.sp-chaos-next {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: #ff660088;
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.sp-chaos-log {
+  font-size: 9px;
+  color: #ff00ffaa;
+  font-style: italic;
+  text-align: center;
+  min-height: 14px;
+  font-family: 'Space Mono', monospace;
+  text-shadow: 0 0 6px #ff00ff66;
+  word-break: break-word;
+}
