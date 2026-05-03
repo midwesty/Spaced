@@ -62,7 +62,7 @@ const BALL_COLORS = [
 ];
 
 // Blitzards bottle colors
-const BOTTLE_COLORS = ['#3fa', '#f83', '#f3a', '#3af', '#ff3'];
+const BOTTLE_COLORS = ['#33ffaa', '#ff8833', '#ff33aa', '#33aaff', '#ffff33'];
 
 // ─── MODULE STATE ─────────────────────────────────────────────────────────────
 
@@ -205,6 +205,7 @@ export function openPoolTable(tableId, state, data, api) {
     blitzTargetScore: 10, blitzLastBreak: null,
     voidHustleUsed: false, voidHustleCooldown: 0,
     calledBall: null, calledPocket: null,
+  opponentCalledBall: null,
   };
 
   injectStyles();
@@ -1102,25 +1103,97 @@ function resolveStraightPool() {
   const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
 
   if (pts.foulThisTurn) {
-    if (pts.currentTurn === 'player') { pts.playerScore = Math.max(0, pts.playerScore - 1); ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`); }
-    else { pts.opponentScore = Math.max(0, pts.opponentScore - 1); }
+    if (pts.currentTurn === 'player') {
+      pts.playerScore = Math.max(0, pts.playerScore - 1);
+      ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`);
+    } else {
+      pts.opponentScore = Math.max(0, pts.opponentScore - 1);
+      ptAddLog(`${pts.opponent.name} scratches. –1 pt.`);
+    }
+    pts.calledBall = null; pts.opponentCalledBall = null;
     switchTurn(); return;
   }
 
   if (pts.currentTurn === 'player') {
-    const goodPockets = pocketed.filter(p => pts.calledBall ? p.ball.num === pts.calledBall : true);
-    pts.playerScore += goodPockets.length;
-    if (goodPockets.length) ptAddLog(`+${goodPockets.length} pts! Your score: ${pts.playerScore}/${pts.scoreTarget}`);
-    if (pts.playerScore >= pts.scoreTarget) { endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return; }
-    if (goodPockets.length > 0) { pts.calledBall = null; updateGameUI(); return; }
+    // Real straight pool: must call a ball. Uncalled pockets don't score, turn ends.
+    const called = pts.calledBall;
+    if (!called) {
+      ptAddLog(`No ball called — call a ball before shooting. Turn over.`);
+      pts.calledBall = null;
+      switchTurn(); return;
+    }
+    const calledPocketed = pocketed.find(p => p.ball.num === called);
+    if (calledPocketed) {
+      pts.playerScore += 1;
+      ptAddLog(`Ball ${called} called and pocketed! +1 pt · Score: ${pts.playerScore}/${pts.scoreTarget}`);
+      if (pts.playerScore >= pts.scoreTarget) {
+        endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return;
+      }
+      pts.calledBall = null;
+      // Check rerack: if only the cue ball (and optionally a break ball) remain
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      if (pocketed.length > 0) {
+        ptAddLog(`Ball ${called} wasn't pocketed. Slop doesn't count. Turn over.`);
+      } else {
+        ptAddLog(`Missed. Turn over.`);
+      }
+      pts.calledBall = null;
+      switchTurn(); return;
+    }
   } else {
-    const oppPocketed = pocketed.length;
-    pts.opponentScore += oppPocketed;
-    if (pts.opponentScore >= pts.scoreTarget) { endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return; }
+    // AI opponent — auto-called its target in runOpponentTurn
+    const called = pts.opponentCalledBall;
+    const calledPocketed = called ? pocketed.find(p => p.ball.num === called) : null;
+    if (calledPocketed) {
+      pts.opponentScore += 1;
+      ptAddLog(`${pts.opponent.name} pockets ball ${called}. Score: ${pts.opponentScore}/${pts.scoreTarget}`);
+      if (pts.opponentScore >= pts.scoreTarget) {
+        endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return;
+      }
+      pts.opponentCalledBall = null;
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      pts.opponentCalledBall = null;
+      switchTurn(); return;
+    }
   }
+}
 
-  pts.calledBall = null;
-  switchTurn();
+function checkStraightPoolRerack() {
+  const pts = _pts;
+  const activeBalls = pts.balls.filter(b => !b.pocketed && !b.isCue);
+  if (activeBalls.length === 0) {
+    // All balls pocketed — full rerack, cue ball stays
+    ptAddLog(`Table cleared! Reracking 15 balls...`);
+    doStraightPoolRerack(15);
+  } else if (activeBalls.length === 1) {
+    // 1 ball (break ball) remains — rerack the other 14, leave break ball in place
+    ptAddLog(`One ball remaining — reracking 14 and continuing...`);
+    const breakBall = activeBalls[0];
+    doStraightPoolRerack(14, breakBall);
+  }
+}
+
+function doStraightPoolRerack(count, preserveBall) {
+  const pts = _pts;
+  const cue = pts.balls.find(b => b.isCue);
+  // Keep cue ball and preserved break ball, replace all others
+  const newBalls = [cue];
+  if (preserveBall) newBalls.push(preserveBall);
+  // Rack starting position slightly behind center to leave break ball area clear
+  const rackX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.72;
+  const positions = triangleRack(rackX, PT_MID_Y, count);
+  const nums = shuffleArr(Array.from({ length: count }, (_, i) => {
+    // Avoid the break ball number if preserving one
+    return preserveBall ? (i + 1 >= preserveBall.num ? i + 2 : i + 1) : i + 1;
+  }).slice(0, count));
+  positions.forEach((p, i) => {
+    if (nums[i]) newBalls.push(createBall(nums[i], p.x, p.y));
+  });
+  pts.balls = newBalls;
 }
 
 function resolveBlitzards() {
@@ -1157,6 +1230,7 @@ function switchTurn() {
   _pts.pocketedThisTurn = [];
   _pts.foulThisTurn = false;
   _pts.calledBall = null;
+  _pts.opponentCalledBall = null;
 
   if (_pts.currentTurn === 'player') {
     _pts.currentTurn = 'opponent';
@@ -1190,6 +1264,12 @@ function runOpponentTurn() {
   const targetBall = findOpponentTarget();
 
   if (!targetBall) { switchTurn(); return; }
+
+  // Straight pool: AI must call a ball too
+  if (pts.game === 'straight_pool') {
+    pts.opponentCalledBall = targetBall.num;
+    ptAddLog(`${pts.opponent.name} calls ball ${targetBall.num}.`);
+  }
 
   // Calculate aim toward target ball
   const aimX = targetBall.x, aimY = targetBall.y;
@@ -1556,7 +1636,7 @@ function renderStraightPoolUI() {
       </div>
       <div class="pt-score-target">Race to <strong>${pts.scoreTarget}</strong></div>
       <div class="pt-progress-bar"><div class="pt-progress-fill" style="width:${(pts.playerScore/pts.scoreTarget)*100}%"></div></div>
-      ${pts.calledBall ? `<div class="pt-called-ball">Called: Ball <strong>${pts.calledBall}</strong></div>` : '<div class="pt-call-hint">Select a ball to call your shot</div>'}
+      ${pts.calledBall ? `<div class="pt-called-ball">Called: Ball <strong>${pts.calledBall}</strong></div>` : '<div class="pt-call-hint">⚠ Must call a ball before shooting</div>'}
     </div>`;
 }
 
