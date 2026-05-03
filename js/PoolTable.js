@@ -62,7 +62,7 @@ const BALL_COLORS = [
 ];
 
 // Blitzards bottle colors
-const BOTTLE_COLORS = ['#3fa', '#f83', '#f3a', '#3af', '#ff3'];
+const BOTTLE_COLORS = ['#33ffaa', '#ff8833', '#ff33aa', '#33aaff', '#ffff33'];
 
 // ─── MODULE STATE ─────────────────────────────────────────────────────────────
 
@@ -896,17 +896,35 @@ function drawBottles(ctx) {
     ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Bottle shape
+    // Bottle shape — drawn with arcTo for full browser compatibility
     ctx.fillStyle = bottle.color + 'aa';
     ctx.strokeStyle = bottle.color;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(-4, -10, 8, 16, 3);
+    ctx.moveTo(-2, -10);
+    ctx.lineTo(2, -10);
+    ctx.arcTo(4, -10, 4, -8, 2);
+    ctx.lineTo(4, 4);
+    ctx.arcTo(4, 6, 2, 6, 2);
+    ctx.lineTo(-2, 6);
+    ctx.arcTo(-4, 6, -4, 4, 2);
+    ctx.lineTo(-4, -8);
+    ctx.arcTo(-4, -10, -2, -10, 2);
+    ctx.closePath();
     ctx.fill(); ctx.stroke();
 
     // Neck
     ctx.beginPath();
-    ctx.roundRect(-2, -14, 4, 6, 1);
+    ctx.moveTo(-1, -14);
+    ctx.lineTo(1, -14);
+    ctx.arcTo(2, -14, 2, -13, 1);
+    ctx.lineTo(2, -9);
+    ctx.arcTo(2, -8, 1, -8, 1);
+    ctx.lineTo(-1, -8);
+    ctx.arcTo(-2, -8, -2, -9, 1);
+    ctx.lineTo(-2, -13);
+    ctx.arcTo(-2, -14, -1, -14, 1);
+    ctx.closePath();
     ctx.fill(); ctx.stroke();
 
     // Cap glint
@@ -1137,25 +1155,84 @@ function resolveStraightPool() {
   const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
 
   if (pts.foulThisTurn) {
-    if (pts.currentTurn === 'player') { pts.playerScore = Math.max(0, pts.playerScore - 1); ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`); }
-    else { pts.opponentScore = Math.max(0, pts.opponentScore - 1); }
+    if (pts.currentTurn === 'player') {
+      pts.playerScore = Math.max(0, pts.playerScore - 1);
+      ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`);
+    } else {
+      pts.opponentScore = Math.max(0, pts.opponentScore - 1);
+      ptAddLog(`${pts.opponent.name} scratches. –1 pt.`);
+    }
+    pts.calledBall = null; pts.opponentCalledBall = null;
     switchTurn(); return;
   }
 
   if (pts.currentTurn === 'player') {
-    const goodPockets = pocketed.filter(p => pts.calledBall ? p.ball.num === pts.calledBall : true);
-    pts.playerScore += goodPockets.length;
-    if (goodPockets.length) ptAddLog(`+${goodPockets.length} pts! Your score: ${pts.playerScore}/${pts.scoreTarget}`);
-    if (pts.playerScore >= pts.scoreTarget) { endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return; }
-    if (goodPockets.length > 0) { pts.calledBall = null; updateGameUI(); return; }
+    // Must call a ball — no call means turn ends
+    if (!pts.calledBall) {
+      ptAddLog(`No ball called — call a ball before shooting. Turn over.`);
+      switchTurn(); return;
+    }
+    const calledPocketed = pocketed.find(p => p.ball.num === pts.calledBall);
+    if (calledPocketed) {
+      pts.playerScore += 1;
+      ptAddLog(`Ball ${pts.calledBall} called and pocketed! +1 pt · Score: ${pts.playerScore}/${pts.scoreTarget}`);
+      if (pts.playerScore >= pts.scoreTarget) {
+        endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return;
+      }
+      pts.calledBall = null;
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      ptAddLog(pocketed.length > 0 ? `Ball ${pts.calledBall} wasn't pocketed. Slop doesn't count. Turn over.` : `Missed. Turn over.`);
+      pts.calledBall = null;
+      switchTurn(); return;
+    }
   } else {
-    const oppPocketed = pocketed.length;
-    pts.opponentScore += oppPocketed;
-    if (pts.opponentScore >= pts.scoreTarget) { endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return; }
+    const called = pts.opponentCalledBall;
+    const calledPocketed = called ? pocketed.find(p => p.ball.num === called) : null;
+    if (calledPocketed) {
+      pts.opponentScore += 1;
+      ptAddLog(`${pts.opponent.name} pockets ball ${called}. Score: ${pts.opponentScore}/${pts.scoreTarget}`);
+      if (pts.opponentScore >= pts.scoreTarget) {
+        endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return;
+      }
+      pts.opponentCalledBall = null;
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      pts.opponentCalledBall = null;
+      switchTurn(); return;
+    }
   }
+}
 
-  pts.calledBall = null;
-  switchTurn();
+function checkStraightPoolRerack() {
+  const pts = _pts;
+  const activeBalls = pts.balls.filter(b => !b.pocketed && !b.isCue);
+  if (activeBalls.length === 0) {
+    ptAddLog(`Table cleared! Reracking 15 balls...`);
+    doStraightPoolRerack(15, null);
+  } else if (activeBalls.length === 1) {
+    ptAddLog(`One ball remaining — reracking 14 and continuing...`);
+    doStraightPoolRerack(14, activeBalls[0]);
+  }
+}
+
+function doStraightPoolRerack(count, preserveBall) {
+  const pts = _pts;
+  const cue = pts.balls.find(b => b.isCue);
+  const newBalls = [cue];
+  if (preserveBall) newBalls.push(preserveBall);
+  const rackX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.72;
+  const positions = triangleRack(rackX, PT_MID_Y, count);
+  const excludeNum = preserveBall ? preserveBall.num : -1;
+  const pool = [];
+  for (let i = 1; i <= 15 && pool.length < count; i++) {
+    if (i !== excludeNum) pool.push(i);
+  }
+  const nums = shuffleArr(pool).slice(0, count);
+  positions.forEach((p, i) => { if (nums[i]) newBalls.push(createBall(nums[i], p.x, p.y)); });
+  pts.balls = newBalls;
 }
 
 function resolveBlitzards() {
@@ -1192,6 +1269,7 @@ function switchTurn() {
   _pts.pocketedThisTurn = [];
   _pts.foulThisTurn = false;
   _pts.calledBall = null;
+  _pts.opponentCalledBall = null;
 
   if (_pts.currentTurn === 'player') {
     _pts.currentTurn = 'opponent';
@@ -1225,6 +1303,12 @@ function runOpponentTurn() {
   const targetBall = findOpponentTarget();
 
   if (!targetBall) { switchTurn(); return; }
+
+  // Straight pool: AI must call a ball
+  if (pts.game === 'straight_pool') {
+    pts.opponentCalledBall = targetBall.num;
+    ptAddLog(`${pts.opponent.name} calls ball ${targetBall.num}.`);
+  }
 
   // Calculate aim toward target ball
   const aimX = targetBall.x, aimY = targetBall.y;
