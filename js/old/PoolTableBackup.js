@@ -222,12 +222,9 @@ export function openPoolTable(tableId, state, data, api) {
     spFlipped: false,
     spLastEventTime: 0,
     spExplosions: [],
-    spGravityWell: null,
-    spPlayerScore: 0, spOpponentScore: 0, spScoreTarget: 15,
     // english/spin
     spinX: 0,   // -1 (left) to 1 (right) — side spin
     spinY: 0,   // -1 (backspin) to 1 (topspin)
-    jumpShot: false,
     // first-ball-hit tracking (for 9-ball rule enforcement)
     firstBallHitNum: null,
     firstBallHitThisShot: false,
@@ -495,13 +492,12 @@ function ptSound(id, volume = 1.0) {
 function createBall(num, x, y) {
   return {
     num, x, y, vx: 0, vy: 0,
-    z: 0, vz: 0,               // height above table (for jump shots)
     pocketed: false,
     isStripe: num >= 9 && num <= 15,
     isCue: num === 0,
     color: num === 0 ? '#f0f0f0' : BALL_COLORS[num] || '#888',
-    spinX: 0, spinY: 0,
-    angVel: 0,
+    spinX: 0, spinY: 0,    // current spin state
+    angVel: 0,             // angular velocity for rolling/sliding display
     _justBounced: false,
   };
 }
@@ -510,106 +506,54 @@ function physicsStep() {
   const balls = _pts.balls.filter(b => !b.pocketed);
   let anyMoving = false;
 
+  // Move, apply friction, apply spin effect
   for (const b of balls) {
-    // ── JUMP / AIRBORNE PHYSICS ─────────────────────────────
-    if (b.vz !== 0 || b.z > 0) {
-      const GRAVITY = 1.8;
-      b.z += b.vz;
-      b.vz -= GRAVITY;
-      if (b.z <= 0) {
-        b.z = 0;
-        if (Math.abs(b.vz) > 2) {
-          // Bounce on landing
-          b.vz = -b.vz * 0.35;
-          ptSound('cushion_bounce', 0.4);
-        } else {
-          b.vz = 0;
-        }
-      }
-      // While airborne, check table boundary — out of bounds = scratch
-      if (b.isCue && (b.x < PT_PLAY_X1 - 20 || b.x > PT_PLAY_X2 + 20 || b.y < PT_PLAY_Y1 - 20 || b.y > PT_PLAY_Y2 + 20)) {
-        b.pocketed = true; b.vx = 0; b.vy = 0; b.vz = 0; b.z = 0;
-        _pts.foulThisTurn = true;
-        ptAddLog('JUMP SHOT — cue ball off the table! SCRATCH.');
-        ptSound('foul', 0.8);
-        _pts.pocketedThisTurn.push({ ball: b, pocket: null });
-        _pts.placingCueBall = true;
-        break;
-      }
-    }
-
     b.x += b.vx;
     b.y += b.vy;
 
-    // ── SPIN / ENGLISH PHYSICS ──────────────────────────────
-    if (b.isCue) {
+    // Spin physics: side spin curves the ball, top/back spin affects rolling
+    if (b.isCue && (b.spinX !== 0 || b.spinY !== 0)) {
+      // Side spin (english): perpendicular deflection force — decreases as ball decelerates
       const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-
-      // Side spin (left/right english): curves the cue ball
-      // Effect is strongest at high speed, diminishes as ball slows
-      if (b.spinX !== 0 && speed > 0.5) {
-        const len = speed;
-        // Perpendicular unit vector to travel direction
+      if (speed > 1.0 && b.spinX !== 0) {
+        // Perpendicular to travel direction
+        const len = speed || 1;
         const px = -b.vy / len, py = b.vx / len;
-        // Curve force: 0.28 max, scales with speed (more effect when fast)
-        const curveFactor = 0.28 * (Math.min(speed, PT_MAX_POWER) / PT_MAX_POWER);
-        b.vx += px * b.spinX * curveFactor;
-        b.vy += py * b.spinX * curveFactor;
+        b.vx += px * b.spinX * 0.08;
+        b.vy += py * b.spinX * 0.08;
       }
-
-      // Top spin (follow shot): cue continues rolling after contact
-      // Backspin (draw/stop shot): cue reverses or stops after contact
-      if (b.spinY !== 0 && speed > 0) {
-        if (b.spinY > 0) {
-          // Topspin: resist friction (ball keeps rolling)
-          b.vx *= (1 + b.spinY * 0.012);
-          b.vy *= (1 + b.spinY * 0.012);
-        } else {
-          // Backspin: extra friction when rolling + counter-impulse
-          // After near-stop, reverse direction (draw shot)
-          if (speed < 2.5 && speed > 0.3) {
-            const dirX = b.vx / speed, dirY = b.vy / speed;
-            b.vx += dirX * b.spinY * 0.8 * (1 - speed / 2.5);
-            b.vy += dirY * b.spinY * 0.8 * (1 - speed / 2.5);
-          } else {
-            b.vx *= (1 + b.spinY * 0.008);
-            b.vy *= (1 + b.spinY * 0.008);
-          }
-        }
+      // Back/top spin: top spin keeps rolling (less slowdown), backspin reverses after stop
+      if (b.spinY !== 0) {
+        b.vx *= (1 + b.spinY * 0.003);
+        b.vy *= (1 + b.spinY * 0.003);
       }
-
-      // Spin decays with speed — stop spinning when ball stops
-      const spinDecay = 0.94;
-      b.spinX *= spinDecay;
-      b.spinY *= spinDecay;
-      if (Math.abs(b.spinX) < 0.005) b.spinX = 0;
-      if (Math.abs(b.spinY) < 0.005) b.spinY = 0;
+      // Spin decays
+      b.spinX *= 0.97;
+      b.spinY *= 0.97;
+      if (Math.abs(b.spinX) < 0.01) b.spinX = 0;
+      if (Math.abs(b.spinY) < 0.01) b.spinY = 0;
     }
 
     b.vx *= PT_FRICTION;
     b.vy *= PT_FRICTION;
     if (Math.abs(b.vx) < PT_MIN_SPEED) b.vx = 0;
     if (Math.abs(b.vy) < PT_MIN_SPEED) b.vy = 0;
-    if (b.vx !== 0 || b.vy !== 0 || b.z > 0 || b.vz !== 0) anyMoving = true;
+    if (b.vx !== 0 || b.vy !== 0) anyMoving = true;
 
-    // Cushion bounces — only when grounded
-    if (b.z <= 0) {
-      let bounced = false;
-      if (b.x - PT_BALL_R < PT_PLAY_X1) { b.x = PT_PLAY_X1 + PT_BALL_R; b.vx = Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
-      if (b.x + PT_BALL_R > PT_PLAY_X2) { b.x = PT_PLAY_X2 - PT_BALL_R; b.vx = -Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
-      if (b.y - PT_BALL_R < PT_PLAY_Y1) { b.y = PT_PLAY_Y1 + PT_BALL_R; b.vy = Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
-      if (b.y + PT_BALL_R > PT_PLAY_Y2) { b.y = PT_PLAY_Y2 - PT_BALL_R; b.vy = -Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
-      if (bounced && !b._justBounced) { b._justBounced = true; ptSound('cushion_bounce', 0.3); }
-      else if (!bounced) b._justBounced = false;
-    }
+    // Cushion bounces
+    let bounced = false;
+    if (b.x - PT_BALL_R < PT_PLAY_X1) { b.x = PT_PLAY_X1 + PT_BALL_R; b.vx = Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.x + PT_BALL_R > PT_PLAY_X2) { b.x = PT_PLAY_X2 - PT_BALL_R; b.vx = -Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.y - PT_BALL_R < PT_PLAY_Y1) { b.y = PT_PLAY_Y1 + PT_BALL_R; b.vy = Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.y + PT_BALL_R > PT_PLAY_Y2) { b.y = PT_PLAY_Y2 - PT_BALL_R; b.vy = -Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (bounced && !b._justBounced) { b._justBounced = true; ptSound('cushion_bounce', 0.3); }
+    else if (!bounced) b._justBounced = false;
   }
 
-  // Ball-ball collisions — skipped for airborne balls
+  // Ball-ball collisions
   for (let i = 0; i < balls.length; i++) {
     for (let j = i + 1; j < balls.length; j++) {
       const a = balls[i], b = balls[j];
-      // Skip collision if either ball is airborne (jump clears other balls)
-      if ((a.z > PT_BALL_R * 0.6) || (b.z > PT_BALL_R * 0.6)) continue;
       const dx = b.x - a.x, dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < PT_BALL_R * 2 && dist > 0) {
@@ -623,21 +567,7 @@ function physicsStep() {
           const impulse = dot * PT_BALL_RESTITUTION;
           a.vx -= impulse * nx; a.vy -= impulse * ny;
           b.vx += impulse * nx; b.vy += impulse * ny;
-
-          // Spin transfer on collision: cue ball with topspin follows through,
-          // backspin causes cue to stop/reverse (stun/draw shot)
-          if (a.isCue && a.spinY !== 0) {
-            // Transfer momentum based on spin type
-            const spinTransfer = a.spinY * 1.2;
-            a.vx += nx * spinTransfer; a.vy += ny * spinTransfer;
-            a.spinY *= 0.3; // spin mostly consumed at contact
-          } else if (b.isCue && b.spinY !== 0) {
-            const spinTransfer = b.spinY * 1.2;
-            b.vx -= nx * spinTransfer; b.vy -= ny * spinTransfer;
-            b.spinY *= 0.3;
-          }
-
-          // First-ball-hit tracking
+          // First-ball-hit tracking: when cue ball hits another ball
           if (a.isCue && !_pts.firstBallHitThisShot) {
             _pts.firstBallHitThisShot = true;
             _pts.firstBallHitNum = b.num;
@@ -654,13 +584,12 @@ function physicsStep() {
     }
   }
 
-  // Pocket detection — only grounded balls
+  // Pocket detection
   for (const b of balls) {
-    if (b.z > PT_BALL_R * 0.5) continue; // airborne balls can't pocket
     for (const p of POCKET_POSITIONS) {
       const dx = b.x - p.x, dy = b.y - p.y;
       if (Math.sqrt(dx * dx + dy * dy) < PT_POCKET_R) {
-        b.pocketed = true; b.vx = 0; b.vy = 0; b.vz = 0; b.z = 0;
+        b.pocketed = true; b.vx = 0; b.vy = 0;
         onBallPocketed(b, p);
         break;
       }
@@ -670,7 +599,6 @@ function physicsStep() {
   // Bottle collision detection
   if (_pts.game === 'blitzards' && _pts.bottles) {
     for (const ball of balls) {
-      if (ball.z > PT_BALL_R) continue; // airborne clears bottles too
       const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
       for (const bottle of _pts.bottles) {
         if (bottle.shattered) continue;
@@ -904,66 +832,41 @@ function drawTable() {
 
 function drawBall(ctx, ball) {
   const { x, y, color, num, isStripe } = ball;
-  const height = ball.z || 0;
-  const isAirborne = height > 0.5;
 
-  // Shadow when airborne
-  if (isAirborne) {
-    const shadowScale = 1 - Math.min(0.5, height / 80);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(x + height * 0.3, y + height * 0.2, PT_BALL_R * shadowScale, PT_BALL_R * 0.5 * shadowScale, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // Normal ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath();
-    ctx.ellipse(x + 2, y + 3, PT_BALL_R, PT_BALL_R * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Draw ball — scale up slightly when airborne (perspective illusion)
-  const ballScale = isAirborne ? 1 + Math.min(0.25, height / 80) : 1;
-  const r = PT_BALL_R * ballScale;
-  const drawX = isAirborne ? x : x;
-  const drawY = isAirborne ? y - height * 0.6 : y; // lift ball visually
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(x + 2, y + 3, PT_BALL_R, PT_BALL_R * 0.6, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   if (isStripe) {
+    // White ball with stripe band
     ctx.fillStyle = '#f0f0f0';
-    ctx.beginPath(); ctx.arc(drawX, drawY, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, PT_BALL_R, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(drawX, drawY, r, Math.PI * 0.25, Math.PI * 0.75); ctx.fill();
+    ctx.arc(x, y, PT_BALL_R, Math.PI * 0.25, Math.PI * 0.75); ctx.fill();
     ctx.beginPath();
-    ctx.arc(drawX, drawY, r, Math.PI * 1.25, Math.PI * 1.75); ctx.fill();
+    ctx.arc(x, y, PT_BALL_R, Math.PI * 1.25, Math.PI * 1.75); ctx.fill();
   } else {
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(drawX, drawY, r, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // Airborne glow rim
-  if (isAirborne) {
-    ctx.strokeStyle = 'rgba(255,255,180,0.6)';
-    ctx.lineWidth = 1.5;
-    ctx.shadowBlur = 8; ctx.shadowColor = '#ffff88';
-    ctx.beginPath(); ctx.arc(drawX, drawY, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(x, y, PT_BALL_R, 0, Math.PI * 2); ctx.fill();
   }
 
   // Gloss highlight
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.beginPath();
-  ctx.ellipse(drawX - r * 0.3, drawY - r * 0.3, r * 0.35, r * 0.25, -0.5, 0, Math.PI * 2);
+  ctx.ellipse(x - PT_BALL_R * 0.3, y - PT_BALL_R * 0.3, PT_BALL_R * 0.35, PT_BALL_R * 0.25, -0.5, 0, Math.PI * 2);
   ctx.fill();
 
   // Number on ball
   if (num > 0) {
-    const fontSize = r * 0.85;
+    const fontSize = PT_BALL_R * 0.85;
     ctx.font = `bold ${fontSize}px "Space Mono", monospace`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = isStripe ? '#1a1a1a' : 'rgba(255,255,255,0.9)';
     if (!isStripe && (color === '#f5d800' || color === '#d6521a')) ctx.fillStyle = '#1a1a1a';
-    ctx.fillText(String(num), drawX, drawY + 0.5);
+    ctx.fillText(num <= 9 ? String(num) : String(num), x, y + 0.5);
   }
 }
 
@@ -1198,18 +1101,7 @@ function attachSpinCard() {
       updateSpinLabel();
     });
   });
-
-  // Jump button — toggles jump shot mode
-  const jumpBtn = document.getElementById('ptJumpBtn');
-  const jumpHint = document.getElementById('ptJumpHint');
-  if (jumpBtn) {
-    jumpBtn.addEventListener('click', () => {
-      _pts.jumpShot = !_pts.jumpShot;
-      jumpBtn.classList.toggle('pt-jump-active', _pts.jumpShot);
-      if (jumpHint) jumpHint.textContent = _pts.jumpShot ? '🔼 Jump active — charge & shoot!' : '';
-      ptSound('button_click', 0.4);
-    });
-  }
+}
 
 function drawSpinCard() {
   const canvas = document.getElementById('ptSpinCanvas');
@@ -1365,17 +1257,6 @@ function shoot() {
 
   cue.vx = Math.cos(_pts.aimAngle) * power;
   cue.vy = Math.sin(_pts.aimAngle) * power;
-  // Apply jump if flagged
-  if (_pts.jumpShot) {
-    // Jump height scales with power — harder shot = longer jump
-    const jumpVz = 4 + (power / PT_MAX_POWER) * 8;
-    cue.vz = jumpVz;
-    // Reduce horizontal velocity slightly (energy into jump)
-    cue.vx *= 0.85; cue.vy *= 0.85;
-    ptSound('cue_strike', 0.9);
-    ptAddLog('JUMP SHOT!');
-    _pts.jumpShot = false;
-  }
   // Apply selected english/spin to cue ball
   cue.spinX = _pts.spinX;
   cue.spinY = _pts.spinY;
@@ -1699,11 +1580,6 @@ function initSpacePool() {
   _pts.spFlipped = false;
   _pts.spLastEventTime = 0;
   _pts.spExplosions = [];
-  _pts.spGravityWell = null;
-  // Point scoring
-  _pts.spPlayerScore = 0;
-  _pts.spOpponentScore = 0;
-  _pts.spScoreTarget = 15;
   mountGameCanvas();
 }
 
@@ -1711,58 +1587,32 @@ function resolveSpacePool() {
   const pts = _pts;
   const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
 
-  if (!pts.foulThisTurn && pocketed.length > 0) {
-    const now = Date.now();
-    const elapsed = now - pts.spBallTimerStart;
-    const secsLeft = Math.max(0, (pts.spBallTimeLimit - elapsed) / 1000);
-    const isHotBall = secsLeft < 10;
-
-    let scored = 0;
-    for (const p of pocketed) {
-      const bonus = (isHotBall && p.ball.num === pts.lowestBall) ? 2 : 0;
-      scored += 1 + bonus;
-      if (bonus > 0) ptAddLog(`🔥 HOT BALL BONUS! Ball ${p.ball.num} with ${Math.ceil(secsLeft)}s left! +${1 + bonus}pts`);
-    }
-
-    if (pts.currentTurn === 'player') {
-      pts.spPlayerScore = (pts.spPlayerScore || 0) + scored;
-      ptAddLog(`+${scored} pts! Your score: ${pts.spPlayerScore}/${pts.spScoreTarget}`);
-      if (pts.spPlayerScore >= pts.spScoreTarget) { endGame(true, `🌀 ${pts.spPlayerScore} points! SPACE POOL CHAMPION!`); return; }
+  if (pocketed.find(p => p.ball.num === 9)) {
+    if (pts.foulThisTurn) {
+      ptAddLog('Foul on the 9 — ball returns!');
+      const nine = pts.balls.find(b => b.num === 9);
+      if (nine) { nine.pocketed = false; nine.x = (PT_PLAY_X1 + PT_PLAY_X2) / 2; nine.y = PT_MID_Y; }
     } else {
-      pts.spOpponentScore = (pts.spOpponentScore || 0) + scored;
-      ptAddLog(`${pts.opponent.name} scores ${scored}! Their score: ${pts.spOpponentScore}/${pts.spScoreTarget}`);
-      if (pts.spOpponentScore >= pts.spScoreTarget) { endGame(false, `${pts.opponent.name} reached ${pts.spScoreTarget} points!`); return; }
+      endGame(pts.currentTurn === 'player', pts.currentTurn === 'player' ? '🌀 You sank the 9! SPACE POOL CHAMPION!' : `${pts.opponent.name} sank the 9!`);
+      return;
     }
-
-    const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0);
-    if (remaining.length === 0) { ptAddLog('Table cleared! Reracking...'); spRerack(); return; }
-    const newLowest = Math.min(...remaining.map(b => b.num));
-    if (newLowest !== pts.lowestBall) pts.spBallTimerStart = Date.now();
-    pts.lowestBall = newLowest;
-
-    if (pts.currentTurn === 'opponent') { setTimeout(() => runOpponentTurn(), 800); }
-    else { updateGameUI(); }
-    return;
   }
 
-  const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0);
-  if (remaining.length === 0) { spRerack(); return; }
-  pts.lowestBall = Math.min(...remaining.map(b => b.num));
-  if (pts.foulThisTurn) ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : pts.opponent.name + ' fouls'} — ball in hand!`);
-  switchTurn();
-}
+  if (!pts.foulThisTurn && pocketed.length > 0 && pts.currentTurn === 'player') {
+    const newLowest = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+    if (newLowest !== pts.lowestBall) {
+      // Only reset timer when a NEW ball becomes the target
+      pts.spBallTimerStart = Date.now();
+    }
+    pts.lowestBall = newLowest;
+    ptAddLog(`Pocketed! Next: Ball ${pts.lowestBall}`);
+    updateGameUI(); return;
+  }
 
-function spRerack() {
-  const pts = _pts;
-  setTimeout(() => {
-    pts.balls = rackNineBall();
-    placeCueBallAtDefault();
-    pts.lowestBall = 1;
-    pts.spBallTimerStart = Date.now();
-    for (let i = 1; i <= 10; i++) delete pts[`_lastTick_${i}`];
-    pts.shotInProgress = false;
-    updateGameUI();
-  }, 600);
+  pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+  if (pts.foulThisTurn) ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : `${pts.opponent.name} fouls`} — ball in hand!`);
+  // DO NOT reset timer on turn switch — timer is per ball, not per turn
+  switchTurn();
 }
 
 function tickSpacePool() {
@@ -2144,28 +1994,14 @@ function renderSpacePoolUI() {
   const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num).sort((a, b) => a - b);
   const timerClass = secsLeft <= 10 ? 'sp-timer-danger' : secsLeft <= 30 ? 'sp-timer-warn' : 'sp-timer-ok';
   const nextEventSecs = Math.max(0, Math.ceil((pts.spNextEvent - now) / 1000));
-  const pScore = pts.spPlayerScore || 0;
-  const oScore = pts.spOpponentScore || 0;
-  const target = pts.spScoreTarget || 15;
 
   return `
     <div class="pt-sidebar-section sp-sidebar">
       <div class="pt-sidebar-title sp-title">🌀 SPACE POOL</div>
-      <div class="sp-scores-row">
-        <div class="sp-score-block ${pts.currentTurn === 'player' ? 'sp-active-player' : ''}">
-          <div class="sp-score-num">${pScore}</div>
-          <div class="sp-score-sub">YOU</div>
-        </div>
-        <div class="sp-score-target-mid">/${target}</div>
-        <div class="sp-score-block ${pts.currentTurn === 'opponent' ? 'sp-active-player' : ''}">
-          <div class="sp-score-num">${oScore}</div>
-          <div class="sp-score-sub">${pts.opponent?.name || 'OPP'}</div>
-        </div>
-      </div>
       <div class="sp-timer-wrap">
-        <div class="sp-timer-label">BALL TIMER · Ball ${pts.lowestBall || '?'}</div>
+        <div class="sp-timer-label">BALL TIMER</div>
         <div class="sp-timer ${timerClass}">${secsLeft}s</div>
-        <div class="sp-timer-sub">${secsLeft <= 10 ? '🔥 HOT BALL — bonus pts!' : 'Sink it or it explodes'}</div>
+        <div class="sp-timer-sub">Sink ball <strong>${pts.lowestBall || '?'}</strong> or it explodes</div>
       </div>
       <div class="sp-balls-label">ON TABLE</div>
       <div class="sp-remaining">
@@ -2181,82 +2017,66 @@ function switchTurn() {
   _pts.foulThisTurn = false;
   _pts.calledBall = null;
   _pts.opponentCalledBall = null;
-  const wasPlacingCueBall = _pts.placingCueBall;
-
   if (_pts.currentTurn === 'player') {
     _pts.currentTurn = 'opponent';
-    // If player scratched, opponent places the cue ball (not the player)
-    // Clear placingCueBall so player doesn't get a place prompt on their next turn
-    _pts.placingCueBall = false;
-    ptAddLog(`${_pts.opponent.name}'s turn${wasPlacingCueBall ? ' — ball in hand.' : '...'}`);
+    ptAddLog(`${_pts.opponent.name}'s turn...`);
     updateGameUI();
-    setTimeout(() => runOpponentTurn(wasPlacingCueBall), 1200);
+    setTimeout(() => runOpponentTurn(), 1200);
   } else {
     _pts.currentTurn = 'player';
-    // If opponent scratched, player now places the cue ball
-    if (wasPlacingCueBall) {
-      _pts.placingCueBall = true;
-      ptAddLog(`Your turn — place the cue ball${['eight_ball','nine_ball','straight_pool'].includes(_pts.game) && !_pts.ballInHandAnywhere ? ' in the kitchen.' : ' anywhere.'}`);
-    } else {
-      ptAddLog(`Your turn.`);
-    }
+    ptAddLog(`Your turn.`);
     updateGameUI();
   }
 }
 
 // ─── AI OPPONENT ──────────────────────────────────────────────────────────────
 
-function runOpponentTurn(needsPlace = false) {
+function runOpponentTurn() {
   const pts = _pts;
-  let cueBall = pts.balls.find(b => b.isCue && !b.pocketed);
-
-  // Place the cue ball if opponent has ball-in-hand (after player scratch or foul)
-  if (needsPlace || !cueBall) {
+  const cue = pts.balls.find(b => b.isCue && !b.pocketed);
+  if (!cue) {
     const oppCue = pts.balls.find(b => b.isCue);
     if (oppCue) {
       oppCue.pocketed = false;
-      const kitchenGames = ['eight_ball', 'nine_ball', 'straight_pool'];
-      const useKitchen = kitchenGames.includes(pts.game) && !pts.ballInHandAnywhere;
-      const headX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25;
-      const maxX = useKitchen ? headX - PT_BALL_R - 2 : PT_PLAY_X2 - PT_BALL_R - 40;
-      const minX = PT_PLAY_X1 + PT_BALL_R + 8;
-      // Try up to 20 positions to avoid ball overlaps
-      for (let attempt = 0; attempt < 20; attempt++) {
-        const tx = minX + Math.random() * (maxX - minX);
-        const ty = PT_PLAY_Y1 + PT_BALL_R + 10 + Math.random() * (PT_PLAY_Y2 - PT_PLAY_Y1 - PT_BALL_R * 2 - 20);
-        const clash = pts.balls.some(b => !b.pocketed && !b.isCue && Math.hypot(b.x - tx, b.y - ty) < PT_BALL_R * 2.2);
-        if (!clash) { oppCue.x = tx; oppCue.y = ty; break; }
-        if (attempt === 19) { oppCue.x = useKitchen ? headX - 40 : PT_PLAY_X1 + 60; oppCue.y = PT_MID_Y; }
-      }
+      const kitchenGames = ['eight_ball', 'straight_pool'];
+      const maxX = (kitchenGames.includes(pts.game) && !pts.ballInHandAnywhere)
+        ? PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25 - PT_BALL_R - 2
+        : PT_PLAY_X2 - PT_BALL_R - 40;
+      oppCue.x = PT_PLAY_X1 + 50 + Math.random() * (maxX - PT_PLAY_X1 - 50);
+      oppCue.y = PT_MID_Y + (Math.random() - 0.5) * (PT_PLAY_Y2 - PT_PLAY_Y1 - 60);
       pts.ballInHandAnywhere = false;
-      cueBall = oppCue;
     }
   }
 
   const arch = pts.opponent.archetype;
   const targetBall = findOpponentTarget();
+
   if (!targetBall) { switchTurn(); return; }
 
+  // Straight pool: AI must call a ball
   if (pts.game === 'straight_pool') {
     pts.opponentCalledBall = targetBall.num;
     ptAddLog(`${pts.opponent.name} calls ball ${targetBall.num}.`);
   }
 
+  // Calculate aim toward target ball
+  const aimX = targetBall.x, aimY = targetBall.y;
+  const cueBall = pts.balls.find(b => b.isCue && !b.pocketed);
   if (!cueBall) { switchTurn(); return; }
-  let angle = Math.atan2(targetBall.y - cueBall.y, targetBall.x - cueBall.x);
+
+  let angle = Math.atan2(aimY - cueBall.y, aimX - cueBall.x);
+  // Add some inaccuracy based on archetype
   const accuracy = { shark: 0.05, nervous: 0.22, reckless: 0.28, drunk: 0.42 }[arch] || 0.15;
   angle += (Math.random() - 0.5) * accuracy;
+
   const powerBase = { shark: 0.65, nervous: 0.45, reckless: 0.85, drunk: 0.6 }[arch] || 0.55;
   const power = PT_MAX_POWER * (powerBase + (Math.random() - 0.5) * 0.2);
 
   cueBall.vx = Math.cos(angle) * power;
   cueBall.vy = Math.sin(angle) * power;
-  cueBall.vz = 0; cueBall.z = 0; // ensure not airborne
   pts.shotInProgress = true;
   pts.pocketedThisTurn = [];
   pts.foulThisTurn = false;
-  pts.firstBallHitThisShot = false;
-  pts.firstBallHitNum = null;
   if (pts.bottles) pts.bottles.forEach(b => b._collidedThisShot = false);
   pts.balls.forEach(b => { b._collidedBottleThisShot = false; b._nearBottle = null; });
 }
@@ -2466,10 +2286,6 @@ function mountGameCanvas() {
             <button class="pt-spin-preset" data-sx="-0.8" data-sy="0" title="Left english">◄</button>
             <button class="pt-spin-preset" data-sx="0.8" data-sy="0" title="Right english">►</button>
           </div>
-          <button class="pt-jump-btn" id="ptJumpBtn" title="Jump shot — ball clears over blocking balls">
-            ↑ JUMP
-          </button>
-          <div class="pt-jump-hint" id="ptJumpHint"></div>
         </div>
         <div class="pt-game-sidebar" id="ptGameSidebar">
           ${game.renderGameUI()}
