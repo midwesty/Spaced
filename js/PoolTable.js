@@ -518,12 +518,10 @@ function physicsStep() {
       b.vz -= GRAVITY;
       if (b.z <= 0) {
         b.z = 0;
-        // Only bounce if landing hard enough — raise threshold to prevent micro-jitter
         if (Math.abs(b.vz) > 5) {
           b.vz = -b.vz * 0.3;
           ptSound('cushion_bounce', 0.4);
         } else {
-          // Fully grounded — kill all vertical motion and dampen horizontal slide
           b.vz = 0;
           b.vx *= 0.6;
           b.vy *= 0.6;
@@ -1215,6 +1213,7 @@ function attachSpinCard() {
       ptSound('button_click', 0.4);
     });
   }
+}
 
 function drawSpinCard() {
   const canvas = document.getElementById('ptSpinCanvas');
