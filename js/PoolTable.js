@@ -222,6 +222,13 @@ export function openPoolTable(tableId, state, data, api) {
     spFlipped: false,
     spLastEventTime: 0,
     spExplosions: [],
+    // english/spin
+    spinX: 0,   // -1 (left) to 1 (right) — side spin
+    spinY: 0,   // -1 (backspin) to 1 (topspin)
+    // first-ball-hit tracking (for 9-ball rule enforcement)
+    firstBallHitNum: null,
+    firstBallHitThisShot: false,
+    ballInHandAnywhere: false,
   };
 
   injectStyles();
@@ -447,9 +454,40 @@ function startBetPhase(seat) {
   };
 }
 
-// ═══════════════════════════════════════════════════════════
-//  PHYSICS ENGINE
-// ═══════════════════════════════════════════════════════════
+// ─── SOUND SYSTEM ─────────────────────────────────────────────────────────────
+// Wire audio files here. Add matching files to assets/audio/pool/ later.
+const PT_SOUNDS = {};
+const PT_SOUND_FILES = {
+  ball_hit:        'assets/audio/pool/ball_hit.wav',
+  ball_pocket:     'assets/audio/pool/ball_pocket.wav',
+  cue_strike:      'assets/audio/pool/cue_strike.wav',
+  cushion_bounce:  'assets/audio/pool/cushion_bounce.wav',
+  explosion:       'assets/audio/pool/explosion.wav',
+  chain_explosion: 'assets/audio/pool/chain_explosion.wav',
+  chaos_event:     'assets/audio/pool/chaos_event.wav',
+  bottle_shatter:  'assets/audio/pool/bottle_shatter.wav',
+  game_win:        'assets/audio/pool/game_win.wav',
+  game_lose:       'assets/audio/pool/game_lose.wav',
+  foul:            'assets/audio/pool/foul.wav',
+  button_click:    'assets/audio/pool/button_click.wav',
+  rack_break:      'assets/audio/pool/rack_break.wav',
+  timer_tick:      'assets/audio/pool/timer_tick.wav',
+  timer_critical:  'assets/audio/pool/timer_critical.wav',
+};
+
+function ptSound(id, volume = 1.0) {
+  try {
+    if (!PT_SOUNDS[id]) {
+      if (!PT_SOUND_FILES[id]) return;
+      PT_SOUNDS[id] = new Audio(PT_SOUND_FILES[id]);
+    }
+    const snd = PT_SOUNDS[id].cloneNode();
+    snd.volume = Math.max(0, Math.min(1, volume));
+    snd.play().catch(() => {}); // silently fail if no file yet
+  } catch (e) {}
+}
+
+// ─── PHYSICS ENGINE ────────────────────────────────────────────────────────────
 
 function createBall(num, x, y) {
   return {
@@ -458,7 +496,9 @@ function createBall(num, x, y) {
     isStripe: num >= 9 && num <= 15,
     isCue: num === 0,
     color: num === 0 ? '#f0f0f0' : BALL_COLORS[num] || '#888',
-    spinX: 0, spinY: 0,
+    spinX: 0, spinY: 0,    // current spin state
+    angVel: 0,             // angular velocity for rolling/sliding display
+    _justBounced: false,
   };
 }
 
@@ -466,10 +506,34 @@ function physicsStep() {
   const balls = _pts.balls.filter(b => !b.pocketed);
   let anyMoving = false;
 
-  // Move and apply friction
+  // Move, apply friction, apply spin effect
   for (const b of balls) {
     b.x += b.vx;
     b.y += b.vy;
+
+    // Spin physics: side spin curves the ball, top/back spin affects rolling
+    if (b.isCue && (b.spinX !== 0 || b.spinY !== 0)) {
+      // Side spin (english): perpendicular deflection force — decreases as ball decelerates
+      const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      if (speed > 1.0 && b.spinX !== 0) {
+        // Perpendicular to travel direction
+        const len = speed || 1;
+        const px = -b.vy / len, py = b.vx / len;
+        b.vx += px * b.spinX * 0.08;
+        b.vy += py * b.spinX * 0.08;
+      }
+      // Back/top spin: top spin keeps rolling (less slowdown), backspin reverses after stop
+      if (b.spinY !== 0) {
+        b.vx *= (1 + b.spinY * 0.003);
+        b.vy *= (1 + b.spinY * 0.003);
+      }
+      // Spin decays
+      b.spinX *= 0.97;
+      b.spinY *= 0.97;
+      if (Math.abs(b.spinX) < 0.01) b.spinX = 0;
+      if (Math.abs(b.spinY) < 0.01) b.spinY = 0;
+    }
+
     b.vx *= PT_FRICTION;
     b.vy *= PT_FRICTION;
     if (Math.abs(b.vx) < PT_MIN_SPEED) b.vx = 0;
@@ -477,10 +541,13 @@ function physicsStep() {
     if (b.vx !== 0 || b.vy !== 0) anyMoving = true;
 
     // Cushion bounces
-    if (b.x - PT_BALL_R < PT_PLAY_X1) { b.x = PT_PLAY_X1 + PT_BALL_R; b.vx = Math.abs(b.vx) * PT_CUSHION_RESTITUTION; }
-    if (b.x + PT_BALL_R > PT_PLAY_X2) { b.x = PT_PLAY_X2 - PT_BALL_R; b.vx = -Math.abs(b.vx) * PT_CUSHION_RESTITUTION; }
-    if (b.y - PT_BALL_R < PT_PLAY_Y1) { b.y = PT_PLAY_Y1 + PT_BALL_R; b.vy = Math.abs(b.vy) * PT_CUSHION_RESTITUTION; }
-    if (b.y + PT_BALL_R > PT_PLAY_Y2) { b.y = PT_PLAY_Y2 - PT_BALL_R; b.vy = -Math.abs(b.vy) * PT_CUSHION_RESTITUTION; }
+    let bounced = false;
+    if (b.x - PT_BALL_R < PT_PLAY_X1) { b.x = PT_PLAY_X1 + PT_BALL_R; b.vx = Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.x + PT_BALL_R > PT_PLAY_X2) { b.x = PT_PLAY_X2 - PT_BALL_R; b.vx = -Math.abs(b.vx) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.y - PT_BALL_R < PT_PLAY_Y1) { b.y = PT_PLAY_Y1 + PT_BALL_R; b.vy = Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (b.y + PT_BALL_R > PT_PLAY_Y2) { b.y = PT_PLAY_Y2 - PT_BALL_R; b.vy = -Math.abs(b.vy) * PT_CUSHION_RESTITUTION; bounced = true; }
+    if (bounced && !b._justBounced) { b._justBounced = true; ptSound('cushion_bounce', 0.3); }
+    else if (!bounced) b._justBounced = false;
   }
 
   // Ball-ball collisions
@@ -500,6 +567,18 @@ function physicsStep() {
           const impulse = dot * PT_BALL_RESTITUTION;
           a.vx -= impulse * nx; a.vy -= impulse * ny;
           b.vx += impulse * nx; b.vy += impulse * ny;
+          // First-ball-hit tracking: when cue ball hits another ball
+          if (a.isCue && !_pts.firstBallHitThisShot) {
+            _pts.firstBallHitThisShot = true;
+            _pts.firstBallHitNum = b.num;
+            ptSound('ball_hit', 0.5 + Math.min(0.5, impulse * 0.05));
+          } else if (b.isCue && !_pts.firstBallHitThisShot) {
+            _pts.firstBallHitThisShot = true;
+            _pts.firstBallHitNum = a.num;
+            ptSound('ball_hit', 0.5 + Math.min(0.5, impulse * 0.05));
+          } else if (!a.isCue && !b.isCue) {
+            ptSound('ball_hit', 0.2 + Math.min(0.3, impulse * 0.03));
+          }
         }
       }
     }
@@ -517,7 +596,7 @@ function physicsStep() {
     }
   }
 
-  // Bottle collision detection — checked per ball, independent of ball-ball collisions
+  // Bottle collision detection
   if (_pts.game === 'blitzards' && _pts.bottles) {
     for (const ball of balls) {
       const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
@@ -526,21 +605,17 @@ function physicsStep() {
         const dx = ball.x - bottle.x, dy = ball.y - bottle.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < PT_BALL_R + 8) {
-          // Tag the ball as being near this bottle (for pocket detection)
           ball._nearBottle = bottle;
-          // If moving fast enough, shatter it
           if (speed >= 1.0 && !bottle._collidedThisShot && !ball._collidedBottleThisShot) {
             bottle._collidedThisShot = true;
             ball._collidedBottleThisShot = true;
             triggerBottleShatter(bottle, ball.num, ball);
-            // Deflect ball slightly off the bottle
             const nx = dx / (dist || 1), ny = dy / (dist || 1);
             ball.vx += nx * 1.5;
             ball.vy += ny * 1.5;
           }
           break;
         } else if (dist > PT_BALL_R + 30 && ball._nearBottle === bottle) {
-          // Ball moved away from this bottle, clear the tag
           ball._nearBottle = null;
         }
       }
@@ -557,6 +632,7 @@ function checkBottleCollision(a, b) {
 function triggerBottleShatter(bottle, culpritBall, culpritBallObj) {
   bottle.shattered = true;
   bottle.shatterTime = Date.now();
+  ptSound('bottle_shatter', 0.8);
   bottle.fragments = Array.from({ length: 10 }, (_, i) => ({
     angle: (i / 10) * Math.PI * 2 + Math.random() * 0.4,
     speed: 3 + Math.random() * 5,
@@ -611,9 +687,12 @@ function onBallPocketed(ball, pocket) {
   }
   _pts.pocketedThisTurn.push({ ball, pocket });
   if (ball.isCue) {
+    ptSound('foul', 0.7);
     _pts.foulThisTurn = true;
     ptAddLog('SCRATCH — cue ball pocketed.');
     _pts.placingCueBall = true;
+  } else {
+    ptSound('ball_pocket', 0.8);
   }
 }
 
@@ -674,12 +753,28 @@ function drawTable() {
   ctx.strokeRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
 
   // Head string
+  const headX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25;
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
-  const headX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25;
   ctx.beginPath(); ctx.moveTo(headX, PT_PLAY_Y1); ctx.lineTo(headX, PT_PLAY_Y2); ctx.stroke();
   ctx.setLineDash([]);
+
+  // Kitchen zone highlight when placing cue ball in kitchen-mode games
+  const kitchenGames = ['eight_ball', 'nine_ball', 'straight_pool'];
+  if (_pts.placingCueBall && kitchenGames.includes(_pts.game)) {
+    ctx.fillStyle = 'rgba(121,212,255,0.07)';
+    ctx.fillRect(PT_PLAY_X1, PT_PLAY_Y1, headX - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
+    ctx.strokeStyle = 'rgba(121,212,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(headX, PT_PLAY_Y1); ctx.lineTo(headX, PT_PLAY_Y2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#79d4ff';
+    ctx.font = '9px "Space Mono", monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('← KITCHEN', headX - (headX - PT_PLAY_X1) / 2, PT_PLAY_Y1 + 4);
+  }
 
   // Center dot
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -724,11 +819,12 @@ function drawTable() {
 
   // Place cue ball indicator
   if (_pts.placingCueBall && _pts.currentTurn === 'player') {
+    const hX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25;
     ctx.strokeStyle = '#79d4ff';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.arc(_pts.cueBallPosX || headX, _pts.cueBallPosY || PT_MID_Y, PT_BALL_R + 4, 0, Math.PI * 2);
+    ctx.arc(_pts.cueBallPosX || (PT_PLAY_X1 + 60), _pts.cueBallPosY || PT_MID_Y, PT_BALL_R + 4, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -960,6 +1056,107 @@ function drawBottles(ctx) {
 
 // ─── SHOT INPUT (mouse/touch) ──────────────────────────────────────────────────
 
+// ─── SPIN / ENGLISH CARD ──────────────────────────────────────────────────────
+
+function attachSpinCard() {
+  const canvas = document.getElementById('ptSpinCanvas');
+  if (!canvas) return;
+  drawSpinCard();
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      x: (touch.clientX - rect.left) / rect.width,
+      y: (touch.clientY - rect.top) / rect.height,
+    };
+  }
+
+  function applySpinClick(e) {
+    e.preventDefault();
+    const { x, y } = getPos(e);
+    // Map canvas coords to -1..1 spin range (clamped to circle)
+    const sx = (x - 0.5) * 2;
+    const sy = -(y - 0.5) * 2; // invert Y: top = topspin (+)
+    const len = Math.sqrt(sx * sx + sy * sy);
+    const clampLen = Math.min(1, len);
+    _pts.spinX = len > 0 ? (sx / len) * clampLen : 0;
+    _pts.spinY = len > 0 ? (sy / len) * clampLen : 0;
+    drawSpinCard();
+    updateSpinLabel();
+  }
+
+  canvas.addEventListener('mousedown', applySpinClick);
+  canvas.addEventListener('mousemove', (e) => { if (e.buttons) applySpinClick(e); });
+  canvas.addEventListener('touchstart', applySpinClick, { passive: false });
+  canvas.addEventListener('touchmove', applySpinClick, { passive: false });
+
+  // Preset buttons
+  document.querySelectorAll('.pt-spin-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _pts.spinX = parseFloat(btn.dataset.sx);
+      _pts.spinY = parseFloat(btn.dataset.sy);
+      ptSound('button_click', 0.3);
+      drawSpinCard();
+      updateSpinLabel();
+    });
+  });
+}
+
+function drawSpinCard() {
+  const canvas = document.getElementById('ptSpinCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2, r = W / 2 - 6;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Ball background
+  const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+  grad.addColorStop(0, '#e8e8e8');
+  grad.addColorStop(0.7, '#c8c8c8');
+  grad.addColorStop(1, '#888');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  // Ball outline
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+
+  // Crosshair grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+
+  // Strike point indicator
+  const px = cx + _pts.spinX * r * 0.75;
+  const py = cy - _pts.spinY * r * 0.75;
+
+  // Outer ring
+  ctx.strokeStyle = '#ff3300';
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 6; ctx.shadowColor = '#ff3300';
+  ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.stroke();
+
+  // Inner dot
+  ctx.fillStyle = '#ff3300';
+  ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function updateSpinLabel() {
+  const el = document.getElementById('ptSpinVals');
+  if (!el) return;
+  const sx = _pts.spinX, sy = _pts.spinY;
+  const parts = [];
+  if (Math.abs(sy) > 0.15) parts.push(sy > 0 ? 'Top' : 'Back');
+  if (Math.abs(sx) > 0.15) parts.push(sx > 0 ? 'Right' : 'Left');
+  el.textContent = parts.length ? parts.join(' + ') : 'Center';
+}
+
 function attachShotControls() {
   if (!_canvas) return;
 
@@ -1060,10 +1257,17 @@ function shoot() {
 
   cue.vx = Math.cos(_pts.aimAngle) * power;
   cue.vy = Math.sin(_pts.aimAngle) * power;
+  // Apply selected english/spin to cue ball
+  cue.spinX = _pts.spinX;
+  cue.spinY = _pts.spinY;
   _pts.power = 0;
   _pts.shotInProgress = true;
+  _pts.firstBallHitThisShot = false;
+  _pts.firstBallHitNum = null;
   _pts.pocketedThisTurn = [];
   _pts.foulThisTurn = false;
+  ptSound('cue_strike', 0.5 + power * 0.02);
+  if (_pts.round <= 1 && !_pts.firstBallHitThisShot) ptSound('rack_break', 0.9);
   // Reset bottle collision flags on bottles and balls
   if (_pts.bottles) _pts.bottles.forEach(b => b._collidedThisShot = false);
   _pts.balls.forEach(b => { b._collidedBottleThisShot = false; b._nearBottle = null; });
@@ -1074,8 +1278,23 @@ function shoot() {
 function placeCueBall(mx, my) {
   const cue = _pts.balls.find(b => b.isCue);
   if (!cue) return;
-  const x = Math.max(PT_PLAY_X1 + PT_BALL_R + 5, Math.min(mx, PT_PLAY_X2 - PT_BALL_R - 5));
+
+  // Kitchen rule: in 8-ball, 9-ball, straight_pool — cue must be placed
+  // behind the head string (left of headX). Space Pool and Blitzards = anywhere.
+  const headX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25;
+  const kitchenGames = ['eight_ball', 'nine_ball', 'straight_pool'];
+  const inKitchenMode = kitchenGames.includes(_pts.game) && !_pts.ballInHandAnywhere;
+
+  const minX = PT_PLAY_X1 + PT_BALL_R + 5;
+  const maxX = inKitchenMode ? (headX - PT_BALL_R - 2) : (PT_PLAY_X2 - PT_BALL_R - 5);
+  const x = Math.max(minX, Math.min(mx, maxX));
   const y = Math.max(PT_PLAY_Y1 + PT_BALL_R + 5, Math.min(my, PT_PLAY_Y2 - PT_BALL_R - 5));
+
+  if (inKitchenMode && mx > headX) {
+    ptShowMsg('Place cue ball behind the head string (kitchen).');
+    return;
+  }
+
   // Check no overlap with other balls
   for (const b of _pts.balls) {
     if (b.pocketed || b.isCue) continue;
@@ -1084,6 +1303,8 @@ function placeCueBall(mx, my) {
   }
   cue.pocketed = false; cue.x = x; cue.y = y; cue.vx = 0; cue.vy = 0;
   _pts.placingCueBall = false;
+  _pts.ballInHandAnywhere = false;
+  ptSound('button_click', 0.4);
   ptAddLog('Cue ball placed.');
   updateGameUI();
 }
@@ -1134,12 +1355,17 @@ function resolveEightBall() {
 
   const goodPockets = pocketed.filter(p => {
     if (pts.currentTurn === 'player') return pts.playerGroup ? (pts.playerGroup === 'solid' ? !p.ball.isStripe && p.ball.num !== 8 : p.ball.isStripe) : true;
-    return true;
+    return pts.opponentGroup ? (pts.opponentGroup === 'solid' ? !p.ball.isStripe && p.ball.num !== 8 : p.ball.isStripe) : true;
   });
 
-  if (!pts.foulThisTurn && goodPockets.length > 0 && pts.currentTurn === 'player') {
-    ptAddLog(`Good pocket! Continue your turn.`);
-    updateGameUI(); return;
+  if (!pts.foulThisTurn && goodPockets.length > 0) {
+    ptAddLog(`Good pocket! ${pts.currentTurn === 'player' ? 'Continue your turn.' : pts.opponent.name + ' continues.'}`);
+    if (pts.currentTurn === 'opponent') {
+      setTimeout(() => runOpponentTurn(), 1000);
+    } else {
+      updateGameUI();
+    }
+    return;
   }
 
   switchTurn();
@@ -1149,28 +1375,56 @@ function resolveNineBall() {
   const pts = _pts;
   const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
 
-  // Win condition
-  if (pocketed.find(p => p.ball.num === 9)) {
+  // First-ball-hit rule: must hit the lowest ball first
+  // If cue never touched any ball, that's also a foul
+  if (!pts.foulThisTurn && pts.firstBallHitThisShot) {
+    if (pts.firstBallHitNum !== pts.lowestBall) {
+      pts.foulThisTurn = true;
+      ptAddLog(`Wrong ball! Must hit ball ${pts.lowestBall} first — FOUL.`);
+      ptSound('foul', 0.7);
+    }
+  } else if (!pts.foulThisTurn && !pts.firstBallHitThisShot) {
+    pts.foulThisTurn = true;
+    ptAddLog(`Cue ball missed all balls — FOUL.`);
+    ptSound('foul', 0.7);
+  }
+
+  // Win condition: pocket the 9-ball (legally — lowest must have been struck first)
+  const ninePocketed = pocketed.find(p => p.ball.num === 9);
+  if (ninePocketed) {
     if (pts.foulThisTurn) {
-      if (pts.currentTurn === 'player') {
-        ptAddLog('Foul on the 9 — ball returns to table.');
-        const nine = pts.balls.find(b => b.num === 9);
-        if (nine) { nine.pocketed = false; nine.x = (PT_PLAY_X1 + PT_PLAY_X2) / 2; nine.y = PT_MID_Y; }
-      }
+      ptAddLog('Foul on the 9 — ball returns to table.');
+      const nine = pts.balls.find(b => b.num === 9);
+      if (nine) { nine.pocketed = false; nine.x = (PT_PLAY_X1 + PT_PLAY_X2) / 2; nine.y = PT_MID_Y; }
     } else {
-      endGame(pts.currentTurn === 'player', pts.currentTurn === 'player' ? 'You sank the 9-ball! Rack it!' : `${pts.opponent.name} sank the 9!`);
+      ptSound(pts.currentTurn === 'player' ? 'game_win' : 'game_lose', 1.0);
+      endGame(pts.currentTurn === 'player', pts.currentTurn === 'player' ? 'You sank the 9-ball! Victory!' : `${pts.opponent.name} sank the 9!`);
       return;
     }
   }
 
-  if (!pts.foulThisTurn && pocketed.length > 0 && pts.currentTurn === 'player') {
-    pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
-    ptAddLog(`Continue your turn!`);
-    updateGameUI(); return;
+  if (!pts.foulThisTurn && pocketed.length > 0) {
+    // Any player who pockets a ball legally continues their turn
+    const newLowest = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+    pts.lowestBall = isFinite(newLowest) ? newLowest : pts.lowestBall;
+    ptAddLog(`${pts.currentTurn === 'player' ? 'Good shot!' : pts.opponent.name + ' pockets one.'} Continue!`);
+    // Reset first-hit for next shot
+    pts.firstBallHitThisShot = false; pts.firstBallHitNum = null;
+    if (pts.currentTurn === 'opponent') {
+      setTimeout(() => runOpponentTurn(), 1000);
+    } else {
+      updateGameUI();
+    }
+    return;
   }
 
-  pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
-  if (pts.foulThisTurn) ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : `${pts.opponent.name} fouls`} — ball in hand!`);
+  const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num);
+  pts.lowestBall = remaining.length ? Math.min(...remaining) : pts.lowestBall;
+  if (pts.foulThisTurn) {
+    ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : pts.opponent.name + ' fouls'} — ball in hand anywhere!`);
+    // 9-ball: ball in hand = ANYWHERE on table (not kitchen)
+    _pts.ballInHandAnywhere = true;
+  }
   switchTurn();
 }
 
@@ -1366,9 +1620,21 @@ function tickSpacePool() {
   const pts = _pts;
   const now = Date.now();
   const elapsed = now - pts.spBallTimerStart;
+
+  // Timer tick sounds in last 10 seconds
+  const secsLeft = Math.ceil((pts.spBallTimeLimit - elapsed) / 1000);
+  if (secsLeft <= 10 && secsLeft > 0 && pts.currentTurn === 'player') {
+    const tickKey = `_lastTick_${secsLeft}`;
+    if (!pts[tickKey]) {
+      pts[tickKey] = true;
+      ptSound(secsLeft <= 3 ? 'timer_critical' : 'timer_tick', 0.6);
+    }
+  }
+
   if (elapsed >= pts.spBallTimeLimit) {
+    // Clear tick flags for next ball
+    for (let i = 1; i <= 10; i++) delete pts[`_lastTick_${i}`];
     spExplodeLowestBall();
-    // Timer resets to now — next ball gets a fresh 60s
     pts.spBallTimerStart = now;
   }
   if (now >= pts.spNextEvent) {
@@ -1378,40 +1644,45 @@ function tickSpacePool() {
   }
 }
 
-function spExplodeLowestBall() {
+function spExplodeLowestBall(ballNum) {
   const pts = _pts;
-  const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === pts.lowestBall);
-  if (!target) return;
-  ptAddLog(`💣 Ball ${target.num} EXPLODED! Time's up!`);
-  pts.spNeonFlash = Date.now();
+  const num = ballNum !== undefined ? ballNum : pts.lowestBall;
+  const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === num);
+  if (!target || target._exploding) return;
+  target._exploding = true;
 
-  // Explosion particle burst
+  ptAddLog(`💣 Ball ${target.num} EXPLODED!`);
+  pts.spNeonFlash = Date.now();
+  ptSound('explosion', 0.9);
+
+  // Explosion particles
   if (!pts.spExplosions) pts.spExplosions = [];
   pts.spExplosions.push({
-    x: target.x, y: target.y,
-    time: Date.now(),
+    x: target.x, y: target.y, time: Date.now(),
     color: target.color || '#ff0033',
-    particles: Array.from({ length: 16 }, (_, i) => ({
-      angle: (i / 16) * Math.PI * 2 + Math.random() * 0.3,
-      speed: 3 + Math.random() * 7,
-      size: 3 + Math.random() * 4,
+    particles: Array.from({ length: 18 }, (_, i) => ({
+      angle: (i / 18) * Math.PI * 2 + Math.random() * 0.3,
+      speed: 3 + Math.random() * 8, size: 3 + Math.random() * 4,
     })),
   });
 
-  // Dual-zone blast:
-  // Inner zone (CHAIN_R): strong push + chain explosion trigger
-  // Outer zone (PUSH_R): softer push only
-  const CHAIN_R = 70, PUSH_R = 130;
-  const CHAIN_FORCE = 8, PUSH_FORCE = 3.5;
+  // Dual-zone blast
+  const CHAIN_R = 60, PUSH_R = 120;
+  const CHAIN_FORCE = 9, PUSH_FORCE = 4;
+  const chainCandidates = [];
+
   for (const ball of pts.balls) {
-    if (ball.pocketed || ball === target) continue;
+    if (ball.pocketed || ball === target || ball._exploding) continue;
     const dx = ball.x - target.x, dy = ball.y - target.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < CHAIN_R && dist > 0) {
+      // Inner zone: strong push + chain-explode
       const falloff = 1 - dist / CHAIN_R;
       ball.vx += (dx / dist) * CHAIN_FORCE * falloff;
       ball.vy += (dy / dist) * CHAIN_FORCE * falloff;
+      if (!ball.isCue) chainCandidates.push(ball.num);
     } else if (dist < PUSH_R && dist > 0) {
+      // Outer zone: soft push only
       const falloff = 1 - (dist - CHAIN_R) / (PUSH_R - CHAIN_R);
       ball.vx += (dx / dist) * PUSH_FORCE * falloff;
       ball.vy += (dy / dist) * PUSH_FORCE * falloff;
@@ -1419,10 +1690,35 @@ function spExplodeLowestBall() {
   }
 
   target.pocketed = true;
+  target._exploding = false;
+
+  // If the 9-ball explodes, rerack
+  if (target.num === 9) {
+    ptAddLog(`The 9-ball exploded! Reracking...`);
+    setTimeout(() => {
+      _pts.balls = rackNineBall();
+      placeCueBallAtDefault();
+      _pts.lowestBall = 1;
+      _pts.spBallTimerStart = Date.now();
+      _pts.shotInProgress = false;
+      updateGameUI();
+    }, 1200);
+    return;
+  }
+
+  // Chain explosions — staggered for visual drama
+  chainCandidates.forEach((chainNum, i) => {
+    setTimeout(() => {
+      if (!_pts.balls.find(b => b.num === chainNum && !b.pocketed)) return;
+      ptSound('chain_explosion', 0.7);
+      spExplodeLowestBall(chainNum);
+    }, 200 + i * 150);
+  });
+
   const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num);
   if (!remaining.length) { endGame(false, `All balls exploded — the table wins.`); return; }
   pts.lowestBall = Math.min(...remaining);
-  pts.shotInProgress = true; // let blast settle
+  pts.shotInProgress = true;
 }
 
 function spTriggerChaosEvent() {
@@ -1488,6 +1784,7 @@ function spTriggerChaosEvent() {
   }
 
   ptAddLog(pts.spChaosMsg);
+  ptSound('chaos_event', 0.85);
 }
 
 function drawSpacePoolLayer(ctx) {
@@ -1738,13 +2035,16 @@ function runOpponentTurn() {
   const pts = _pts;
   const cue = pts.balls.find(b => b.isCue && !b.pocketed);
   if (!cue) {
-    // Place cue ball for AI
-    cue && (cue.pocketed = false);
     const oppCue = pts.balls.find(b => b.isCue);
     if (oppCue) {
       oppCue.pocketed = false;
-      oppCue.x = PT_PLAY_X1 + 80;
-      oppCue.y = PT_MID_Y + (Math.random() - 0.5) * 100;
+      const kitchenGames = ['eight_ball', 'straight_pool'];
+      const maxX = (kitchenGames.includes(pts.game) && !pts.ballInHandAnywhere)
+        ? PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25 - PT_BALL_R - 2
+        : PT_PLAY_X2 - PT_BALL_R - 40;
+      oppCue.x = PT_PLAY_X1 + 50 + Math.random() * (maxX - PT_PLAY_X1 - 50);
+      oppCue.y = PT_MID_Y + (Math.random() - 0.5) * (PT_PLAY_Y2 - PT_PLAY_Y1 - 60);
+      pts.ballInHandAnywhere = false;
     }
   }
 
@@ -1973,6 +2273,20 @@ function mountGameCanvas() {
           <canvas id="ptCanvas" width="${PT_TABLE_W}" height="${PT_TABLE_H}"></canvas>
           <div class="pt-canvas-hint" id="ptCanvasHint">Move mouse to aim · Hold click to charge power · Release to shoot</div>
         </div>
+        <div class="pt-spin-column">
+          <div class="pt-spin-card" id="ptSpinCard">
+            <div class="pt-spin-label">ENGLISH</div>
+            <canvas id="ptSpinCanvas" width="80" height="80"></canvas>
+            <div class="pt-spin-vals" id="ptSpinVals">Center</div>
+          </div>
+          <div class="pt-spin-presets">
+            <button class="pt-spin-preset" data-sx="0" data-sy="0" title="Center">●</button>
+            <button class="pt-spin-preset" data-sx="0" data-sy="0.8" title="Top spin">▲</button>
+            <button class="pt-spin-preset" data-sx="0" data-sy="-0.8" title="Back spin">▼</button>
+            <button class="pt-spin-preset" data-sx="-0.8" data-sy="0" title="Left english">◄</button>
+            <button class="pt-spin-preset" data-sx="0.8" data-sy="0" title="Right english">►</button>
+          </div>
+        </div>
         <div class="pt-game-sidebar" id="ptGameSidebar">
           ${game.renderGameUI()}
         </div>
@@ -2012,7 +2326,7 @@ function mountGameCanvas() {
   document.getElementById('ptCallSelect')?.addEventListener('change', (e) => {
     _pts.calledBall = e.target.value ? parseInt(e.target.value) : null;
   });
-
+  attachSpinCard();
   updateGameUI();
 }
 
@@ -2191,6 +2505,7 @@ function endGame(playerWon, message) {
   ptAddLog(message);
   syncCredits();
   maybeGossip();
+  ptSound(playerWon ? 'game_win' : 'game_lose', 1.0);
 
   let delta = 0;
   if (playerWon) {

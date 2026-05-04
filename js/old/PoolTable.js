@@ -62,7 +62,7 @@ const BALL_COLORS = [
 ];
 
 // Blitzards bottle colors
-const BOTTLE_COLORS = ['#3fa', '#f83', '#f3a', '#3af', '#ff3'];
+const BOTTLE_COLORS = ['#33ffaa', '#ff8833', '#ff33aa', '#33aaff', '#ffff33'];
 
 // ─── MODULE STATE ─────────────────────────────────────────────────────────────
 
@@ -159,6 +159,15 @@ const PT_GAME_REGISTRY = {
     initFn: (...a) => initBlitzards(...a),
     renderGameUI: (...a) => renderBlitzardsUI(...a),
   },
+  space_pool: {
+    id: 'space_pool',
+    name: 'SPACE POOL',
+    icon: '🌀',
+    subtitle: '9-Ball · 60 seconds per ball · CHAOS GUARANTEED',
+    description: 'Neon 9-ball on a psychedelic blacklight table. Sink each ball in order before the 60-second timer explodes it — chain reactions included. Random CHAOS EVENTS shake the table every 30 seconds. Duplicate balls. Flip the table. Swap positions. Welcome to the void.',
+    initFn: (...a) => initSpacePool(...a),
+    renderGameUI: (...a) => renderSpacePoolUI(...a),
+  },
 };
 
 // ─── CLASS ABILITIES (Void Hustles) ──────────────────────────────────────────
@@ -205,6 +214,14 @@ export function openPoolTable(tableId, state, data, api) {
     blitzTargetScore: 10, blitzLastBreak: null,
     voidHustleUsed: false, voidHustleCooldown: 0,
     calledBall: null, calledPocket: null,
+    opponentCalledBall: null,
+    // space_pool
+    spBallTimerStart: 0, spBallTimeLimit: 60000,
+    spNextEvent: 0, spEventLog: '',
+    spNeonFlash: 0, spChaosMsg: '',
+    spFlipped: false,
+    spLastEventTime: 0,
+    spExplosions: [],
   };
 
   injectStyles();
@@ -608,6 +625,7 @@ function startRenderLoop() {
   function frame() {
     if (!_canvas || !_ctx) return;
     const stillMoving = _pts.shotInProgress ? physicsStep() : false;
+    if (_pts.game === 'space_pool') tickSpacePool();
     drawTable();
 
     if (_pts.shotInProgress && !stillMoving) {
@@ -681,6 +699,11 @@ function drawTable() {
   // Blitzards bottles
   if (_pts.game === 'blitzards') {
     drawBottles(ctx);
+  }
+
+  // Space Pool neon overlay (drawn before balls so balls render on top)
+  if (_pts.game === 'space_pool') {
+    drawSpacePoolLayer(ctx);
   }
 
   // Aim line (when not shooting)
@@ -896,17 +919,35 @@ function drawBottles(ctx) {
     ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Bottle shape
+    // Bottle shape — drawn with arcTo for full browser compatibility
     ctx.fillStyle = bottle.color + 'aa';
     ctx.strokeStyle = bottle.color;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(-4, -10, 8, 16, 3);
+    ctx.moveTo(-2, -10);
+    ctx.lineTo(2, -10);
+    ctx.arcTo(4, -10, 4, -8, 2);
+    ctx.lineTo(4, 4);
+    ctx.arcTo(4, 6, 2, 6, 2);
+    ctx.lineTo(-2, 6);
+    ctx.arcTo(-4, 6, -4, 4, 2);
+    ctx.lineTo(-4, -8);
+    ctx.arcTo(-4, -10, -2, -10, 2);
+    ctx.closePath();
     ctx.fill(); ctx.stroke();
 
     // Neck
     ctx.beginPath();
-    ctx.roundRect(-2, -14, 4, 6, 1);
+    ctx.moveTo(-1, -14);
+    ctx.lineTo(1, -14);
+    ctx.arcTo(2, -14, 2, -13, 1);
+    ctx.lineTo(2, -9);
+    ctx.arcTo(2, -8, 1, -8, 1);
+    ctx.lineTo(-1, -8);
+    ctx.arcTo(-2, -8, -2, -9, 1);
+    ctx.lineTo(-2, -13);
+    ctx.arcTo(-2, -14, -1, -14, 1);
+    ctx.closePath();
     ctx.fill(); ctx.stroke();
 
     // Cap glint
@@ -1055,6 +1096,7 @@ function onShotSettled() {
   else if (game === 'nine_ball') resolveNineBall();
   else if (game === 'straight_pool') resolveStraightPool();
   else if (game === 'blitzards') resolveBlitzards();
+  else if (game === 'space_pool') resolveSpacePool();
 }
 
 function resolveEightBall() {
@@ -1137,25 +1179,84 @@ function resolveStraightPool() {
   const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
 
   if (pts.foulThisTurn) {
-    if (pts.currentTurn === 'player') { pts.playerScore = Math.max(0, pts.playerScore - 1); ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`); }
-    else { pts.opponentScore = Math.max(0, pts.opponentScore - 1); }
+    if (pts.currentTurn === 'player') {
+      pts.playerScore = Math.max(0, pts.playerScore - 1);
+      ptAddLog(`Scratch! –1 pt. Your score: ${pts.playerScore}`);
+    } else {
+      pts.opponentScore = Math.max(0, pts.opponentScore - 1);
+      ptAddLog(`${pts.opponent.name} scratches. –1 pt.`);
+    }
+    pts.calledBall = null; pts.opponentCalledBall = null;
     switchTurn(); return;
   }
 
   if (pts.currentTurn === 'player') {
-    const goodPockets = pocketed.filter(p => pts.calledBall ? p.ball.num === pts.calledBall : true);
-    pts.playerScore += goodPockets.length;
-    if (goodPockets.length) ptAddLog(`+${goodPockets.length} pts! Your score: ${pts.playerScore}/${pts.scoreTarget}`);
-    if (pts.playerScore >= pts.scoreTarget) { endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return; }
-    if (goodPockets.length > 0) { pts.calledBall = null; updateGameUI(); return; }
+    // Must call a ball — no call means turn ends
+    if (!pts.calledBall) {
+      ptAddLog(`No ball called — call a ball before shooting. Turn over.`);
+      switchTurn(); return;
+    }
+    const calledPocketed = pocketed.find(p => p.ball.num === pts.calledBall);
+    if (calledPocketed) {
+      pts.playerScore += 1;
+      ptAddLog(`Ball ${pts.calledBall} called and pocketed! +1 pt · Score: ${pts.playerScore}/${pts.scoreTarget}`);
+      if (pts.playerScore >= pts.scoreTarget) {
+        endGame(true, `You reached ${pts.scoreTarget} points! Straight pool champion!`); return;
+      }
+      pts.calledBall = null;
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      ptAddLog(pocketed.length > 0 ? `Ball ${pts.calledBall} wasn't pocketed. Slop doesn't count. Turn over.` : `Missed. Turn over.`);
+      pts.calledBall = null;
+      switchTurn(); return;
+    }
   } else {
-    const oppPocketed = pocketed.length;
-    pts.opponentScore += oppPocketed;
-    if (pts.opponentScore >= pts.scoreTarget) { endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return; }
+    const called = pts.opponentCalledBall;
+    const calledPocketed = called ? pocketed.find(p => p.ball.num === called) : null;
+    if (calledPocketed) {
+      pts.opponentScore += 1;
+      ptAddLog(`${pts.opponent.name} pockets ball ${called}. Score: ${pts.opponentScore}/${pts.scoreTarget}`);
+      if (pts.opponentScore >= pts.scoreTarget) {
+        endGame(false, `${pts.opponent.name} reached ${pts.scoreTarget} points.`); return;
+      }
+      pts.opponentCalledBall = null;
+      checkStraightPoolRerack();
+      updateGameUI(); return;
+    } else {
+      pts.opponentCalledBall = null;
+      switchTurn(); return;
+    }
   }
+}
 
-  pts.calledBall = null;
-  switchTurn();
+function checkStraightPoolRerack() {
+  const pts = _pts;
+  const activeBalls = pts.balls.filter(b => !b.pocketed && !b.isCue);
+  if (activeBalls.length === 0) {
+    ptAddLog(`Table cleared! Reracking 15 balls...`);
+    doStraightPoolRerack(15, null);
+  } else if (activeBalls.length === 1) {
+    ptAddLog(`One ball remaining — reracking 14 and continuing...`);
+    doStraightPoolRerack(14, activeBalls[0]);
+  }
+}
+
+function doStraightPoolRerack(count, preserveBall) {
+  const pts = _pts;
+  const cue = pts.balls.find(b => b.isCue);
+  const newBalls = [cue];
+  if (preserveBall) newBalls.push(preserveBall);
+  const rackX = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.72;
+  const positions = triangleRack(rackX, PT_MID_Y, count);
+  const excludeNum = preserveBall ? preserveBall.num : -1;
+  const pool = [];
+  for (let i = 1; i <= 15 && pool.length < count; i++) {
+    if (i !== excludeNum) pool.push(i);
+  }
+  const nums = shuffleArr(pool).slice(0, count);
+  positions.forEach((p, i) => { if (nums[i]) newBalls.push(createBall(nums[i], p.x, p.y)); });
+  pts.balls = newBalls;
 }
 
 function resolveBlitzards() {
@@ -1181,18 +1282,444 @@ function resolveBlitzards() {
     }
   }
 
-  // Respawn bottles if all shattered
+  // Respawn 5 new bottles if all shattered — don't reset existing balls
   const alive = pts.bottles.filter(b => !b.shattered).length;
-  if (alive === 0) spawnBlitzardsBottles();
+  if (alive === 0) {
+    ptAddLog(`💥 All bottles smashed! 5 new ones materialize from the void...`);
+    spawnBlitzardsBottles(5, true); // addMode = keep existing shattered, add 5 fresh
+  }
+
+  // Rerack balls if all pocketed and game not won
+  const activeBalls = pts.balls.filter(b => !b.pocketed && !b.isCue);
+  if (activeBalls.length === 0) {
+    ptAddLog(`All balls pocketed — reracking for Blitzards...`);
+    const cue = pts.balls.find(b => b.isCue);
+    pts.balls = rackBalls(10, false);
+    // Restore cue ball position if it survived
+    if (cue && !cue.pocketed) {
+      const newCue = pts.balls.find(b => b.isCue);
+      if (newCue) { newCue.x = cue.x; newCue.y = cue.y; }
+    }
+  }
 
   switchTurn();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPACE POOL — NEON 9-BALL CHAOS MODE
+// ═══════════════════════════════════════════════════════════
+
+const SP_NEON_COLORS = ['#ff00ff','#00ffff','#ff3300','#00ff44','#ffff00','#ff6600','#cc00ff','#00ccff','#ff0066'];
+const SP_CHAOS_EVENTS = ['duplicate','flip','swap','gravity','rainbow'];
+
+function initSpacePool() {
+  _pts.lowestBall = 1;
+  _pts.currentTurn = 'player';
+  _pts.balls = rackNineBall();
+  placeCueBallAtDefault();
+  _pts.spBallTimerStart = Date.now();
+  _pts.spBallTimeLimit = 60000;
+  _pts.spNextEvent = Date.now() + 20000 + Math.random() * 20000;
+  _pts.spEventLog = '';
+  _pts.spNeonFlash = 0;
+  _pts.spChaosMsg = '';
+  _pts.spFlipped = false;
+  _pts.spLastEventTime = 0;
+  _pts.spExplosions = [];
+  mountGameCanvas();
+}
+
+function resolveSpacePool() {
+  const pts = _pts;
+  const pocketed = pts.pocketedThisTurn.filter(p => !p.ball.isCue);
+
+  if (pocketed.find(p => p.ball.num === 9)) {
+    if (pts.foulThisTurn) {
+      ptAddLog('Foul on the 9 — ball returns!');
+      const nine = pts.balls.find(b => b.num === 9);
+      if (nine) { nine.pocketed = false; nine.x = (PT_PLAY_X1 + PT_PLAY_X2) / 2; nine.y = PT_MID_Y; }
+    } else {
+      endGame(pts.currentTurn === 'player', pts.currentTurn === 'player' ? '🌀 You sank the 9! SPACE POOL CHAMPION!' : `${pts.opponent.name} sank the 9!`);
+      return;
+    }
+  }
+
+  if (!pts.foulThisTurn && pocketed.length > 0 && pts.currentTurn === 'player') {
+    const newLowest = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+    if (newLowest !== pts.lowestBall) {
+      // Only reset timer when a NEW ball becomes the target
+      pts.spBallTimerStart = Date.now();
+    }
+    pts.lowestBall = newLowest;
+    ptAddLog(`Pocketed! Next: Ball ${pts.lowestBall}`);
+    updateGameUI(); return;
+  }
+
+  pts.lowestBall = Math.min(...pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num));
+  if (pts.foulThisTurn) ptAddLog(`${pts.currentTurn === 'player' ? 'Foul' : `${pts.opponent.name} fouls`} — ball in hand!`);
+  // DO NOT reset timer on turn switch — timer is per ball, not per turn
+  switchTurn();
+}
+
+function tickSpacePool() {
+  if (_pts.shotInProgress) return;
+  const pts = _pts;
+  const now = Date.now();
+  const elapsed = now - pts.spBallTimerStart;
+  if (elapsed >= pts.spBallTimeLimit) {
+    spExplodeLowestBall();
+    // Timer resets to now — next ball gets a fresh 60s
+    pts.spBallTimerStart = now;
+  }
+  if (now >= pts.spNextEvent) {
+    spTriggerChaosEvent();
+    pts.spLastEventTime = now;
+    pts.spNextEvent = now + 20000 + Math.random() * 20000;
+  }
+}
+
+function spExplodeLowestBall() {
+  const pts = _pts;
+  const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === pts.lowestBall);
+  if (!target) return;
+  ptAddLog(`💣 Ball ${target.num} EXPLODED! Time's up!`);
+  pts.spNeonFlash = Date.now();
+
+  // Explosion particle burst
+  if (!pts.spExplosions) pts.spExplosions = [];
+  pts.spExplosions.push({
+    x: target.x, y: target.y,
+    time: Date.now(),
+    color: target.color || '#ff0033',
+    particles: Array.from({ length: 16 }, (_, i) => ({
+      angle: (i / 16) * Math.PI * 2 + Math.random() * 0.3,
+      speed: 3 + Math.random() * 7,
+      size: 3 + Math.random() * 4,
+    })),
+  });
+
+  // Dual-zone blast:
+  // Inner zone (CHAIN_R): strong push + chain explosion trigger
+  // Outer zone (PUSH_R): softer push only
+  const CHAIN_R = 70, PUSH_R = 130;
+  const CHAIN_FORCE = 8, PUSH_FORCE = 3.5;
+  for (const ball of pts.balls) {
+    if (ball.pocketed || ball === target) continue;
+    const dx = ball.x - target.x, dy = ball.y - target.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < CHAIN_R && dist > 0) {
+      const falloff = 1 - dist / CHAIN_R;
+      ball.vx += (dx / dist) * CHAIN_FORCE * falloff;
+      ball.vy += (dy / dist) * CHAIN_FORCE * falloff;
+    } else if (dist < PUSH_R && dist > 0) {
+      const falloff = 1 - (dist - CHAIN_R) / (PUSH_R - CHAIN_R);
+      ball.vx += (dx / dist) * PUSH_FORCE * falloff;
+      ball.vy += (dy / dist) * PUSH_FORCE * falloff;
+    }
+  }
+
+  target.pocketed = true;
+  const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num);
+  if (!remaining.length) { endGame(false, `All balls exploded — the table wins.`); return; }
+  pts.lowestBall = Math.min(...remaining);
+  pts.shotInProgress = true; // let blast settle
+}
+
+function spTriggerChaosEvent() {
+  const pts = _pts;
+  const event = SP_CHAOS_EVENTS[Math.floor(Math.random() * SP_CHAOS_EVENTS.length)];
+  pts.spNeonFlash = Date.now();
+
+  if (event === 'duplicate') {
+    const active = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0 && b.num !== 9);
+    if (active.length) {
+      const src = active[Math.floor(Math.random() * active.length)];
+      // Place clone on opposite side of table from source with some randomness
+      const cx = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * (0.2 + Math.random() * 0.6);
+      const cy = PT_PLAY_Y1 + (PT_PLAY_Y2 - PT_PLAY_Y1) * (0.2 + Math.random() * 0.6);
+      const clone = createBall(src.num, cx, cy);
+      clone.color = SP_NEON_COLORS[Math.floor(Math.random() * SP_NEON_COLORS.length)];
+      clone.vx = (Math.random() - 0.5) * 3;
+      clone.vy = (Math.random() - 0.5) * 3;
+      pts.balls.push(clone);
+      pts.spChaosMsg = `⚡ CHAOS: Ball ${src.num} DUPLICATED!`;
+    }
+  } else if (event === 'flip') {
+    const midX = (PT_PLAY_X1 + PT_PLAY_X2) / 2;
+    for (const b of pts.balls) {
+      if (!b.pocketed) {
+        b.x = midX + (midX - b.x);
+        b.vx = -b.vx + (Math.random() - 0.5) * 2; // slight chaos on flip
+        b.vy += (Math.random() - 0.5) * 2;
+      }
+    }
+    pts.spChaosMsg = `🔄 CHAOS: TABLE FLIPPED!`;
+  } else if (event === 'swap') {
+    const active = pts.balls.filter(b => !b.pocketed && !b.isCue);
+    if (active.length >= 2) {
+      // Swap ALL pairs (full shuffle of positions)
+      const positions = active.map(b => ({ x: b.x, y: b.y }));
+      const shuffled = shuffleArr(positions);
+      active.forEach((b, i) => { b.x = shuffled[i].x; b.y = shuffled[i].y; b.vx = 0; b.vy = 0; });
+      pts.spChaosMsg = `🔀 CHAOS: ALL BALLS SWAPPED!`;
+    }
+  } else if (event === 'gravity') {
+    const cx = PT_PLAY_X1 + 80 + Math.random() * (PT_PLAY_X2 - PT_PLAY_X1 - 160);
+    const cy = PT_PLAY_Y1 + 40 + Math.random() * (PT_PLAY_Y2 - PT_PLAY_Y1 - 80);
+    pts.spGravityWell = { x: cx, y: cy, time: Date.now(), duration: 3000 };
+    // Apply strong initial impulse
+    for (const b of pts.balls) {
+      if (b.pocketed) continue;
+      const dx = cx - b.x, dy = cy - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      b.vx += (dx / dist) * 8;
+      b.vy += (dy / dist) * 8;
+    }
+    pts.spChaosMsg = `🌀 CHAOS: GRAVITY WELL!`;
+  } else if (event === 'rainbow') {
+    for (const b of pts.balls) {
+      if (!b.pocketed && !b.isCue) b.color = SP_NEON_COLORS[Math.floor(Math.random() * SP_NEON_COLORS.length)];
+    }
+    // Also give balls a random kick
+    for (const b of pts.balls) {
+      if (!b.pocketed && !b.isCue) { b.vx += (Math.random() - 0.5) * 3; b.vy += (Math.random() - 0.5) * 3; }
+    }
+    pts.spChaosMsg = `🌈 CHAOS: RAINBOW SHIFT!`;
+  }
+
+  ptAddLog(pts.spChaosMsg);
+}
+
+function drawSpacePoolLayer(ctx) {
+  const now = Date.now();
+  const pts = _pts;
+
+  // ── LED CUSHION FLASH (drawn on the cushion area, outside play field) ──────
+  // This replaces the static dark green cushion with a strobing neon LED strip
+  const ledPhase = now * 0.005;
+  const ledColors = SP_NEON_COLORS;
+  const ledSegW = PT_TABLE_W / ledColors.length;
+  // Top cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.7) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 120)) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(i * ledSegW, 0, ledSegW, PT_CUSHION);
+  }
+  // Bottom cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.7 + Math.PI) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 100) + 3) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(i * ledSegW, PT_TABLE_H - PT_CUSHION, ledSegW, PT_CUSHION);
+  }
+  // Left cushion
+  const ledSegH = PT_TABLE_H / ledColors.length;
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.9 + 1.2) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 140) + 6) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(0, i * ledSegH, PT_CUSHION, ledSegH);
+  }
+  // Right cushion
+  for (let i = 0; i < ledColors.length; i++) {
+    const phase = Math.sin(ledPhase + i * 0.9 + 2.5) * 0.5 + 0.5;
+    ctx.fillStyle = ledColors[(i + Math.floor(now / 110) + 2) % ledColors.length];
+    ctx.globalAlpha = 0.25 + phase * 0.65;
+    ctx.fillRect(PT_TABLE_W - PT_CUSHION, i * ledSegH, PT_CUSHION, ledSegH);
+  }
+  ctx.globalAlpha = 1;
+
+  // ── BLACKLIGHT FELT WASH ──────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(40,0,80,0.55)';
+  ctx.fillRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
+
+  // ── SCROLLING NEON GRID ───────────────────────────────────────────────────
+  const gridOff = (now * 0.04) % 40;
+  ctx.globalAlpha = 0.09;
+  ctx.strokeStyle = '#ff00ff';
+  ctx.lineWidth = 1;
+  for (let x = PT_PLAY_X1 - gridOff; x < PT_PLAY_X2; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, PT_PLAY_Y1); ctx.lineTo(x, PT_PLAY_Y2); ctx.stroke();
+  }
+  for (let y = PT_PLAY_Y1 - gridOff; y < PT_PLAY_Y2; y += 40) {
+    ctx.beginPath(); ctx.moveTo(PT_PLAY_X1, y); ctx.lineTo(PT_PLAY_X2, y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // ── NEON RAIL GLOW ────────────────────────────────────────────────────────
+  const railP = 0.5 + 0.5 * Math.sin(now * 0.003);
+  ctx.strokeStyle = `rgba(180,0,255,${0.4 + railP * 0.5})`;
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 18; ctx.shadowColor = '#cc00ff';
+  ctx.strokeRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
+
+  // ── POCKET NEON RINGS ─────────────────────────────────────────────────────
+  POCKET_POSITIONS.forEach((p, i) => {
+    const ph = (now * 0.002 + i * 0.8) % (Math.PI * 2);
+    ctx.strokeStyle = SP_NEON_COLORS[i % SP_NEON_COLORS.length];
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 12; ctx.shadowColor = SP_NEON_COLORS[i % SP_NEON_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, PT_POCKET_R + 3 + Math.sin(ph) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+
+  // ── GRAVITY WELL VISUAL ───────────────────────────────────────────────────
+  if (pts.spGravityWell) {
+    const gw = pts.spGravityWell;
+    const age = now - gw.time;
+    if (age < gw.duration) {
+      const fade = 1 - age / gw.duration;
+      const spin = age * 0.005;
+      // Rotating spiral rings
+      for (let ring = 0; ring < 3; ring++) {
+        ctx.globalAlpha = fade * (0.3 + ring * 0.15);
+        ctx.strokeStyle = SP_NEON_COLORS[(ring + 2) % SP_NEON_COLORS.length];
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+        ctx.beginPath();
+        ctx.arc(gw.x, gw.y, 20 + ring * 18 + Math.sin(spin + ring) * 5, spin, spin + Math.PI * 1.5);
+        ctx.stroke();
+      }
+      // Center vortex
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = '#ff00ff';
+      ctx.shadowBlur = 16; ctx.shadowColor = '#ff00ff';
+      ctx.beginPath(); ctx.arc(gw.x, gw.y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    } else {
+      pts.spGravityWell = null;
+    }
+  }
+
+  // ── BALL NEON GLOW HALOS ─────────────────────────────────────────────────
+  for (const ball of pts.balls) {
+    if (ball.pocketed) continue;
+    const gc = ctx.createRadialGradient(ball.x, ball.y, 0, ball.x, ball.y, PT_BALL_R + 10);
+    const bc = ball.isCue ? '#ffffff' : (ball.color || SP_NEON_COLORS[ball.num % SP_NEON_COLORS.length]);
+    gc.addColorStop(0, bc + '77');
+    gc.addColorStop(1, 'transparent');
+    ctx.fillStyle = gc;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, PT_BALL_R + 10, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── COUNTDOWN RING ON TARGET BALL ─────────────────────────────────────────
+  const target = pts.balls.find(b => !b.pocketed && !b.isCue && b.num === pts.lowestBall);
+  if (target) {
+    const elapsed = now - pts.spBallTimerStart;
+    const frac = Math.max(0, 1 - elapsed / pts.spBallTimeLimit);
+    const urgency = frac < 0.3;
+    const tc = frac > 0.6 ? '#00ff44' : frac > 0.3 ? '#ffff00' : '#ff0033';
+    const pulse = urgency ? 0.5 + 0.5 * Math.sin(now * 0.015) : 1;
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = tc;
+    ctx.lineWidth = 3;
+    ctx.shadowBlur = urgency ? 18 : 8; ctx.shadowColor = tc;
+    ctx.beginPath();
+    ctx.arc(target.x, target.y, PT_BALL_R + 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+    ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    const secsLeft = Math.ceil((pts.spBallTimeLimit - elapsed) / 1000);
+    if (secsLeft <= 15) {
+      ctx.fillStyle = tc;
+      ctx.font = `bold 9px "Space Mono", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 8; ctx.shadowColor = tc;
+      ctx.fillText(secsLeft + 's', target.x, target.y - PT_BALL_R - 13);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ── EXPLOSION PARTICLES ───────────────────────────────────────────────────
+  if (pts.spExplosions) {
+    pts.spExplosions = pts.spExplosions.filter(ex => now - ex.time < 900);
+    for (const ex of pts.spExplosions) {
+      const progress = (now - ex.time) / 900;
+      for (const p of ex.particles) {
+        const px = ex.x + Math.cos(p.angle) * p.speed * progress * 60;
+        const py = ex.y + Math.sin(p.angle) * p.speed * progress * 60;
+        ctx.globalAlpha = (1 - progress) * 0.9;
+        ctx.fillStyle = ex.color;
+        ctx.shadowBlur = 8; ctx.shadowColor = ex.color;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * (1 - progress * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Shockwave ring
+      ctx.globalAlpha = (1 - progress) * 0.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 12; ctx.shadowColor = '#ff00ff';
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, progress * 80, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    }
+  }
+
+  // ── NEON FLASH ────────────────────────────────────────────────────────────
+  if (pts.spNeonFlash && now - pts.spNeonFlash < 400) {
+    const fp = (now - pts.spNeonFlash) / 400;
+    ctx.fillStyle = `rgba(255,0,255,${(1 - fp) * 0.45})`;
+    ctx.fillRect(PT_PLAY_X1, PT_PLAY_Y1, PT_PLAY_X2 - PT_PLAY_X1, PT_PLAY_Y2 - PT_PLAY_Y1);
+  }
+
+  // ── CHAOS BANNER (uses spLastEventTime for reliable timing) ──────────────
+  if (pts.spChaosMsg && pts.spLastEventTime) {
+    const age = now - pts.spLastEventTime;
+    if (age < 3500) {
+      const fade = age < 300 ? age / 300 : Math.min(1, (3500 - age) / 600);
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = 'rgba(80,0,120,0.75)';
+      ctx.fillRect(PT_PLAY_X1, PT_MID_Y - 18, PT_PLAY_X2 - PT_PLAY_X1, 36);
+      // Animated border
+      ctx.strokeStyle = SP_NEON_COLORS[Math.floor(now / 80) % SP_NEON_COLORS.length];
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle;
+      ctx.strokeRect(PT_PLAY_X1, PT_MID_Y - 18, PT_PLAY_X2 - PT_PLAY_X1, 36);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px "Space Mono", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 16; ctx.shadowColor = '#ff00ff';
+      ctx.fillText(pts.spChaosMsg, (PT_PLAY_X1 + PT_PLAY_X2) / 2, PT_MID_Y);
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function renderSpacePoolUI() {
+  const pts = _pts;
+  const now = Date.now();
+  const elapsed = pts.spBallTimerStart ? now - pts.spBallTimerStart : 0;
+  const secsLeft = Math.max(0, Math.ceil((pts.spBallTimeLimit - elapsed) / 1000));
+  const remaining = pts.balls.filter(b => !b.pocketed && !b.isCue && b.num > 0).map(b => b.num).sort((a, b) => a - b);
+  const timerClass = secsLeft <= 10 ? 'sp-timer-danger' : secsLeft <= 30 ? 'sp-timer-warn' : 'sp-timer-ok';
+  const nextEventSecs = Math.max(0, Math.ceil((pts.spNextEvent - now) / 1000));
+
+  return `
+    <div class="pt-sidebar-section sp-sidebar">
+      <div class="pt-sidebar-title sp-title">🌀 SPACE POOL</div>
+      <div class="sp-timer-wrap">
+        <div class="sp-timer-label">BALL TIMER</div>
+        <div class="sp-timer ${timerClass}">${secsLeft}s</div>
+        <div class="sp-timer-sub">Sink ball <strong>${pts.lowestBall || '?'}</strong> or it explodes</div>
+      </div>
+      <div class="sp-balls-label">ON TABLE</div>
+      <div class="sp-remaining">
+        ${remaining.map(n => `<div class="sp-ball-pip ${n === pts.lowestBall ? 'sp-target' : ''}">${n}</div>`).join('')}
+      </div>
+      <div class="sp-chaos-next">⚡ Chaos in ${nextEventSecs}s</div>
+      <div class="sp-chaos-log">${pts.spChaosMsg || '...'}</div>
+    </div>`;
 }
 
 function switchTurn() {
   _pts.pocketedThisTurn = [];
   _pts.foulThisTurn = false;
   _pts.calledBall = null;
-
+  _pts.opponentCalledBall = null;
   if (_pts.currentTurn === 'player') {
     _pts.currentTurn = 'opponent';
     ptAddLog(`${_pts.opponent.name}'s turn...`);
@@ -1226,6 +1753,12 @@ function runOpponentTurn() {
 
   if (!targetBall) { switchTurn(); return; }
 
+  // Straight pool: AI must call a ball
+  if (pts.game === 'straight_pool') {
+    pts.opponentCalledBall = targetBall.num;
+    ptAddLog(`${pts.opponent.name} calls ball ${targetBall.num}.`);
+  }
+
   // Calculate aim toward target ball
   const aimX = targetBall.x, aimY = targetBall.y;
   const cueBall = pts.balls.find(b => b.isCue && !b.pocketed);
@@ -1257,7 +1790,7 @@ function findOpponentTarget() {
     const myBalls = activeBalls.filter(b => pts.opponentGroup === 'solid' ? !b.isStripe && b.num !== 8 : b.isStripe);
     return myBalls.length > 0 ? myBalls[Math.floor(Math.random() * myBalls.length)] : activeBalls.find(b => b.num === 8) || activeBalls[0];
   }
-  if (pts.game === 'nine_ball') {
+  if (pts.game === 'nine_ball' || pts.game === 'space_pool') {
     return activeBalls.sort((a, b) => a.num - b.num)[0];
   }
   if (pts.game === 'blitzards') {
@@ -1370,37 +1903,38 @@ function placeCueBallAtDefault() {
   if (cue) { cue.x = PT_PLAY_X1 + (PT_PLAY_X2 - PT_PLAY_X1) * 0.25; cue.y = PT_MID_Y; }
 }
 
-function spawnBlitzardsBottles() {
-  const count = 4 + Math.floor(Math.random() * 3); // 4-6 bottles
-  _pts.bottles = [];
+function spawnBlitzardsBottles(count = null, addMode = false) {
+  const spawnCount = count !== null ? count : (4 + Math.floor(Math.random() * 3));
+  if (!addMode) _pts.bottles = []; // full reset only on init
   const margin = 60;
-  for (let i = 0; i < count; i++) {
+  let added = 0;
+  for (let i = 0; i < spawnCount * 3 && added < spawnCount; i++) {
     let x, y, valid;
     let attempts = 0;
     do {
       valid = true;
       x = PT_PLAY_X1 + margin + Math.random() * (PT_PLAY_X2 - PT_PLAY_X1 - margin * 2);
       y = PT_PLAY_Y1 + margin + Math.random() * (PT_PLAY_Y2 - PT_PLAY_Y1 - margin * 2);
-      // Not too close to balls
       for (const b of _pts.balls) {
         if (b.pocketed) continue;
         const dx = b.x - x, dy = b.y - y;
         if (Math.sqrt(dx * dx + dy * dy) < 40) { valid = false; break; }
       }
-      // Not too close to other bottles
       for (const bt of _pts.bottles) {
+        if (bt.shattered) continue; // ignore shattered bottles for spacing
         const dx = bt.x - x, dy = bt.y - y;
         if (Math.sqrt(dx * dx + dy * dy) < 55) { valid = false; break; }
       }
       attempts++;
-    } while (!valid && attempts < 50);
+    } while (!valid && attempts < 60);
 
     _pts.bottles.push({
       x, y, shattered: false,
-      color: BOTTLE_COLORS[i % BOTTLE_COLORS.length],
+      color: BOTTLE_COLORS[(_pts.bottles.length) % BOTTLE_COLORS.length],
       phase: Math.random() * Math.PI * 2,
       fragments: [], shatterTime: 0,
     });
+    added++;
   }
 }
 
