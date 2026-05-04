@@ -1,6 +1,6 @@
 /**
  * VOID BILLIARDS — Pool & Blitzards Table System for Spaced
- * ==========================================================
+ * ========================================================== v2.1.0
  * Entry point: openPoolTable(tableId, state, data, api)
  *
  * Games: eight_ball | nine_ball | straight_pool | blitzards
