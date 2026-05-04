@@ -518,17 +518,12 @@ function physicsStep() {
       b.vz -= GRAVITY;
       if (b.z <= 0) {
         b.z = 0;
-        // Only bounce if landing hard enough — raise threshold to prevent micro-jitter
-        if (Math.abs(b.vz) > 5) {
-          b.vz = -b.vz * 0.3;
+        if (Math.abs(b.vz) > 2) {
+          // Bounce on landing
+          b.vz = -b.vz * 0.35;
           ptSound('cushion_bounce', 0.4);
         } else {
-          // Fully grounded — kill all vertical motion and dampen horizontal slide
           b.vz = 0;
-          b.vx *= 0.6;
-          b.vy *= 0.6;
-          if (Math.abs(b.vx) < PT_MIN_SPEED) b.vx = 0;
-          if (Math.abs(b.vy) < PT_MIN_SPEED) b.vy = 0;
         }
       }
       // While airborne, check table boundary — out of bounds = scratch
@@ -1215,6 +1210,7 @@ function attachSpinCard() {
       ptSound('button_click', 0.4);
     });
   }
+}
 
 function drawSpinCard() {
   const canvas = document.getElementById('ptSpinCanvas');
