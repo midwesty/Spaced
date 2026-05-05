@@ -212,6 +212,7 @@ export function renderMap(state, data, api) {
         if (t.smoke > 0) cls += ' smoky';
         if (t.stasis > 0) cls += ' stasis-field';
         if (t.gameTable)       cls += ' game-table';
+        if (t.jukebox)         cls += ' tile-jukebox';
         if (t.transition)      cls += ' tile-door';
         else if (t.loot)       cls += ' tile-loot';
         else if (t.interact)   cls += ' tile-interact';
@@ -221,7 +222,7 @@ export function renderMap(state, data, api) {
       tile.style.left = `${x * size}px`; tile.style.top = `${y * size}px`;
       tile.dataset.x  = x; tile.dataset.y = y;
 
-      if (revealed && (t.transition || t.loot || t.interact || t.gameTable)) {
+      if (revealed && (t.transition || t.loot || t.interact || t.gameTable || t.jukebox)) {
         const iconSpan = createEl('span', { class: 'tile-icon' });
         iconSpan.textContent = getTileIcon(t);
         tile.appendChild(iconSpan);
@@ -429,6 +430,7 @@ function renderVisionCones(state, data, api, entityLayer, tileSize) {
 }
 
 function buildTileTooltip(t) {
+  if (t.jukebox)   return `[🎵 Jukebox] Queue a song · 1¢ per track`;
   if (t.gameTable) return `[◈ Card Table] Join a game · Min bet varies`;
   const name = t.containerName || (t.transition ? `→ ${t.transition.mapId}` : null)
     || t.interactText?.slice(0, 60) || 'Interactable';
@@ -438,6 +440,7 @@ function buildTileTooltip(t) {
 }
 
 function getTileIcon(t) {
+  if (t.jukebox)  return '♪';
   if (t.gameTable) return '◈';
   if (t.transition) {
     const dest = t.transition.mapId || '';
