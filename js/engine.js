@@ -4,6 +4,7 @@ import { initPanels, pushMessage, renderActionBar, renderAdmin, renderCodex, ren
 import { openCardTable, resetGamblerCredits } from './CardTable.js';
 import { openSlotMachine } from './SlotMachine.js';
 import { openPoolTable } from './PoolTable.js';
+import { openJukebox, updateJukeboxProximity } from './Jukebox.js';
 
 export class GameEngine {
   constructor(data) {
@@ -89,7 +90,8 @@ export class GameEngine {
       openCargo: () => this.openPanel('inventoryPanel'),
       openCardTable: (tableId) => openCardTable(tableId, this.state, this.data, this.api),
       openSlotMachine: (tableId) => openSlotMachine(tableId, this.state, this.data, this.api),
-      openPoolTable:   (tableId) => openPoolTable(tableId, this.state, this.data, this.api),
+      openPoolTable:   (tableId)    => openPoolTable(tableId, this.state, this.data, this.api),
+      openJukebox:     (jukeboxId)  => openJukebox(jukeboxId, this.state, this.data, this.api),
       // Vendor
       openVendor: (vendorId) => this.openVendor(vendorId),
       buyFromVendor: (vendorId, itemId, qty) => this.buyFromVendor(vendorId, itemId, qty),
@@ -805,6 +807,21 @@ populateCreator() {
         const icon2 = tableDef2?.type === 'slot' ? '🎰' : tableDef2?.type === 'other' ? '🎱' : '◈';
         options.push([`${icon2} ${tableDef2?.name || 'Table'} (move closer)`, () => this.log('Move within 5 tiles to use this.')]);
       }
+      if (tile.jukebox && inRange) {
+        const jkId  = tile.jukebox;
+        const jkDef = (this.data.jukeboxes || []).find(j => j.id === jkId);
+        const jkName = jkDef?.name || 'Jukebox';
+        const cost   = jkDef?.costPerSong ?? 1;
+        options.push([`🎵 ${jkName} (${cost}¢/song)`, () => {
+          openJukebox(jkId, this.state, this.data, this.api);
+        }]);
+      }
+      if (tile.jukebox && !inRange) {
+        const jkDef2 = (this.data.jukeboxes || []).find(j => j.id === tile.jukebox);
+        options.push([`🎵 ${jkDef2?.name || 'Jukebox'} (move closer)`, () => {
+          this.log('Move within 5 tiles to use the jukebox.');
+        }]);
+      }
       if (!tile.blocked) options.push(['Move Here', () => this.moveActorToward(actor, x, y)]);
       if (tile.loot && !inRange) options.push([`Loot (move closer)`, () => this.log('Move closer to loot this.')]);
       if (tile.interact && !inRange) options.push([`Interact (move closer)`, () => this.log('Move closer to interact.')]);
@@ -914,6 +931,10 @@ populateCreator() {
       if (this.state.party.includes(actor.id)) this.revealFog();
       this.advanceTime(this.state.combat.active ? steps.length : steps.length * 3);
       this.pendingAction = null;
+      // Update jukebox proximity volume whenever the leader finishes moving
+      if (this.state.party.includes(actor.id)) {
+        updateJukeboxProximity(actor.x, actor.y, actor.mapId, this.state, this.data);
+      }
       this.renderAll();
       return;
     }
